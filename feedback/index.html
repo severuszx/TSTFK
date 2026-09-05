@@ -545,10 +545,9 @@ footer{
  *   appKey : 应用凭证 AppKey
  * 三项留空时自动降级为"本地模式"（数据只存在当前浏览器）。
  * ================================================================ */
-var CLOUD = {
-  server: '',
-  appId: '',
-  appKey: ''
+var SUPABASE = {
+  url: '',
+  anonKey: ''
 };
 
 /* ================================================================
@@ -939,24 +938,24 @@ navBtns.forEach(function(b){
 /* ================================================================
  * 数据层：LeanCloud REST（云模式） + localStorage（本地模式）
  * ================================================================ */
-function isCloud(){ return !!(CLOUD.server && CLOUD.appId && CLOUD.appKey); }
+function isCloud(){ return !!(SUPABASE.url && SUPABASE.anonKey); }
 
 function cloudHeaders(){
   return {
-    'X-LC-Id': CLOUD.appId,
-    'X-LC-Key': CLOUD.appKey,
+    'apikey': SUPABASE.anonKey,
+    'Authorization': 'Bearer ' + SUPABASE.anonKey,
     'Content-Type': 'application/json'
   };
 }
 function cloudGet(path){
-  return fetch(CLOUD.server + path, { headers: cloudHeaders() }).then(function(r){
+  return fetch(SUPABASE.url + path, { headers: cloudHeaders() }).then(function(r){
     if (!r.ok) { throw new Error('HTTP ' + r.status); }
     return r.json();
   });
 }
 function cloudPost(path, body, headers){
   var h = headers || cloudHeaders();
-  return fetch(CLOUD.server + path, {
+  return fetch(SUPABASE.url + path, {
     method: 'POST',
     headers: h,
     body: body
@@ -974,26 +973,26 @@ function cloudPost(path, body, headers){
     return r.json();
   });
 }
-function cloudPut(path, body){
-  return fetch(CLOUD.server + path, {
-    method: 'PUT',
-    headers: cloudHeaders(),
-    body: JSON.stringify(body)
-  }).then(function(r){
-    if (!r.ok) { throw new Error('HTTP ' + r.status); }
-    return r.json();
-  });
-}
-/* 调用 LeanCloud 云函数（云端校验口令，口令不暴露在前端） */
+/* 调用 Supabase RPC 函数 admin_action（云端校验口令，口令不暴露在前端） */
 function callFunction(name, params){
-  return cloudPost('/1.1/functions/' + name, JSON.stringify(params || {})).then(function(res){
-    return res.result;
+  var action = name.replace('admin','').toLowerCase();
+  var body = { p_action: action, p_password: params.password };
+  if (params.id) body.p_id = params.id;
+  if (params.status !== undefined) body.p_status = params.status;
+  if (params.reply !== undefined) body.p_reply = params.reply;
+  return cloudPost('/rest/v1/rpc/admin_action', JSON.stringify(body)).then(function(res){
+    if (res === 'wrong_password') {
+      var err = new Error('wrong password');
+      err.body = { error: '口令错误' };
+      throw err;
+    }
+    return { ok: true, result: res };
   });
 }
 function normalizeItem(o){
   return {
-    id: o.objectId || o.id,
-    no: o.no || o.nid || '',
+    id: o.id,
+    no: o.no || '',
     gameId: o.gameId || '',
     type: o.type || 'other',
     description: o.description || '',
@@ -1001,8 +1000,8 @@ function normalizeItem(o){
     contact: o.contact || '',
     status: o.status || 'pending',
     reply: o.reply || '',
-    images: o.images || o.imageUrls || [],
-    createdAt: o.createdAt || (o._createdAt || '')
+    images: o.images || [],
+    createdAt: o.created_at || ''
   };
 }
 function createdAtToTs(item){
@@ -1018,16 +1017,17 @@ function createdAtToTs(item){
 
 function fetchAll(){
   if (isCloud()) {
-    return cloudGet('/1.1/classes/Feedback?order=-createdAt&limit=500').then(function(res){
-      return (res.results || []).map(normalizeItem);
+    return cloudGet('/rest/v1/Feedback?select=*&order=created_at.desc&limit=500').then(function(res){
+      return (res || []).map(normalizeItem);
     });
   }
   return Promise.resolve(localList());
 }
 function saveOne(obj){
   if (isCloud()) {
-    return cloudPost('/1.1/classes/Feedback', JSON.stringify(obj)).then(function(res){
-      var it = normalizeItem(res);
+    var hdrs = Object.assign({}, cloudHeaders(), { 'Prefer': 'return=representation' });
+    return cloudPost('/rest/v1/Feedback', JSON.stringify(obj), hdrs).then(function(res){
+      var it = normalizeItem(res[0]);
       it.no = it.no || obj.no;
       it._ts = Date.now();
       return it;
@@ -1061,8 +1061,10 @@ function saveOne(obj){
 }
 function updateOne(id, patch){
   if (isCloud()) {
-    return cloudPut('/1.1/classes/Feedback/' + encodeURIComponent(id), patch).then(function(res){
-      return normalizeItem(res);
+    var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+    return callFunction('adminUpdate', {
+      id: id, password: pwd,
+      status: patch.status, reply: patch.reply
     });
   }
   return new Promise(function(resolve, reject){
@@ -1102,11 +1104,18 @@ function deleteOne(id){
 function uploadImage(img){
   if (isCloud()) {
     var name = 'fb_' + Date.now() + '_' + Math.floor(Math.random() * 100000) + '.jpg';
-    return cloudPost('/1.1/files/' + name, img.blob, {
-      'X-LC-Id': CLOUD.appId,
-      'X-LC-Key': CLOUD.appKey,
-      'Content-Type': 'image/jpeg'
-    }).then(function(res){ return res.url || ''; });
+    return fetch(SUPABASE.url + '/storage/v1/object/feedback-images/' + name, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE.anonKey,
+        'Authorization': 'Bearer ' + SUPABASE.anonKey,
+        'Content-Type': 'image/jpeg'
+      },
+      body: img.blob
+    }).then(function(r){
+      if (!r.ok) { throw new Error('upload failed'); }
+      return SUPABASE.url + '/storage/v1/object/public/feedback-images/' + name;
+    });
   }
   return Promise.resolve(img.dataUrl);
 }
