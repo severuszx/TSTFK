@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Slow Tide · 反馈中心</title>
+<script>
+(function(){
+  var mode = localStorage.getItem('tstfb-theme') || 'system';
+  var dark;
+  if (mode === 'system') { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+  else { dark = (mode === 'dark'); }
+  if (dark) { document.documentElement.classList.add('dark'); }
+  var lang = localStorage.getItem('tstfb-lang') || 'zhCN';
+  document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'zhTW' ? 'zh-Hant' : 'zh-CN');
+})();
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#ffffff;
+  --text:#333333;
+  --text-secondary:#666666;
+  --border:#e5e7eb;
+  --card-bg:#f7f7f7;
+  --hover-bg:#ececec;
+  --primary:#444444;
+  --accent:#555555;
+  --accent-text:#ffffff;
+  --shadow:rgba(0,0,0,.10);
+  --danger:#c0392b;
+  --info:#2471a3;
+  --success:#1e8449;
+  --tag-pending-bg:#ececec;
+  --tag-pending-text:#555555;
+  --tag-doing-bg:#d6eaf8;
+  --tag-doing-text:#1a5276;
+  --tag-done-bg:#d5f5e3;
+  --tag-done-text:#145a32;
+}
+html.dark{
+  --bg:#121212;
+  --text:#e2e2e2;
+  --text-secondary:#aaaaaa;
+  --border:#2a2a2a;
+  --card-bg:#1e1e1e;
+  --hover-bg:#2c2c2c;
+  --primary:#dddddd;
+  --accent:#bbbbbb;
+  --accent-text:#1a1a1a;
+  --shadow:rgba(0,0,0,.45);
+  --danger:#e74c3c;
+  --info:#5dade2;
+  --success:#58d68d;
+  --tag-pending-bg:#2c2c2c;
+  --tag-pending-text:#bbbbbb;
+  --tag-doing-bg:#1a3a52;
+  --tag-doing-text:#aed6f1;
+  --tag-done-bg:#1a3b28;
+  --tag-done-text:#a9dfbf;
+}
+body{
+  background-color:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.6;
+  min-height:100vh;
+}
+.container{max-width:860px;margin:0 auto;padding:0 14px;}
+header{
+  padding:16px 0;
+  border-bottom:1px solid var(--border);
+}
+.header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.site-title{font-size:19px;font-weight:600;}
+.site-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+.header-right{position:relative;}
+.icon-btn{
+  width:38px;height:38px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);
+  background:var(--card-bg);
+  color:var(--text);
+  border-radius:8px;
+  cursor:pointer;
+}
+.icon-btn:hover{background:var(--hover-bg);}
+.settings-panel{
+  position:absolute;top:calc(100% + 10px);right:0;
+  width:280px;max-width:calc(100vw - 28px);
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 8px 28px var(--shadow);
+  display:none;z-index:120;
+}
+.settings-panel.open{display:block;}
+.settings-panel::before{
+  content:'';position:absolute;top:-8px;right:14px;
+  width:14px;height:14px;
+  background:var(--card-bg);
+  border-left:1px solid var(--border);
+  border-top:1px solid var(--border);
+  transform:rotate(45deg);
+}
+.settings-title{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.settings-group{margin:12px 0;}
+.settings-label{font-size:13px;color:var(--text-secondary);margin-bottom:8px;}
+.seg{display:flex;gap:6px;flex-wrap:wrap;}
+.seg-btn{
+  padding:7px 12px;
+  border:1px solid var(--border);
+  background:var(--bg);
+  color:var(--text);
+  border-radius:6px;
+  cursor:pointer;
+  font-size:13px;
+  transition:background .15s;
+}
+.seg-btn:hover{background:var(--hover-bg);}
+.seg-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
+nav{margin:14px 0;}
+.nav-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;}
+.nav-item button{
+  padding:9px 14px;
+  border:1px solid var(--border);
+  background:var(--card-bg);
+  color:var(--text);
+  border-radius:6px;
+  cursor:pointer;
+  font-size:14px;
+}
+.nav-item button:hover{background:var(--hover-bg);}
+.nav-item button.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
+.view{display:none;}
+.view.active{display:block;}
+.card{
+  padding:16px;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin:12px 0;
+}
+.card h2{font-size:17px;margin-bottom:12px;}
+.banner{
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--card-bg);
+  font-size:13px;
+  color:var(--text-secondary);
+  margin:10px 0;
+}
+.banner.warn{border-color:#e6b800;color:#8a6d00;}
+html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
+.form-item{margin:12px 0;}
+.form-label{display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;}
+.form-label .req{color:var(--danger);}
+.form-item input[type="text"],
+.form-item input[type="password"],
+.form-item textarea,
+.form-item select{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-family:inherit;
+}
+.form-item textarea{min-height:110px;resize:vertical;}
+.form-item input:focus,
+.form-item textarea:focus,
+.form-item select:focus{
+  outline:2px solid var(--accent);
+  outline-offset:1px;
+}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:9px 16px;
+  border:1px solid var(--border);
+  background:var(--card-bg);
+  color:var(--text);
+  border-radius:6px;
+  cursor:pointer;
+  font-size:14px;
+  font-family:inherit;
+  min-height:44px;
+}
+.btn:hover{background:var(--hover-bg);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
+.btn.primary:hover{filter:brightness(1.08);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+/* 反馈列表 */
+.list-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.list-toolbar input[type="text"]{
+  flex:1;min-width:150px;
+  padding:9px 12px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--card-bg);
+  color:var(--text);
+  font-size:14px;
+}
+.list-toolbar select{
+  padding:9px 10px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--card-bg);
+  color:var(--text);
+  font-size:14px;
+  font-family:inherit;
+}
+.fb-card{
+  padding:14px 16px;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin:10px 0;
+  cursor:pointer;
+  transition:border-color .15s;
+}
+.fb-card:hover{border-color:var(--accent);}
+.fb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.fb-no{font-weight:600;font-size:14px;font-family:ui-monospace,Consolas,monospace;}
+.fb-type{font-size:12px;color:var(--text-secondary);}
+.fb-status{
+  font-size:12px;padding:2px 10px;border-radius:999px;
+  font-weight:500;
+}
+.fb-status.pending{background:var(--tag-pending-bg);color:var(--tag-pending-text);}
+.fb-status.doing{background:var(--tag-doing-bg);color:var(--tag-doing-text);}
+.fb-status.done{background:var(--tag-done-bg);color:var(--tag-done-text);}
+.fb-time{font-size:12px;color:var(--text-secondary);margin-left:auto;}
+.fb-desc{
+  font-size:14px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.fb-thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+.fb-thumbs img{
+  width:64px;height:64px;object-fit:cover;
+  border-radius:6px;border:1px solid var(--border);
+}
+.empty{padding:34px 16px;text-align:center;color:var(--text-secondary);font-size:14px;}
+/* 详情 */
+.detail-meta{margin:10px 0;}
+.detail-meta .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:14px;}
+.detail-meta .row .k{color:var(--text-secondary);flex:none;}
+.detail-body{
+  margin:14px 0;
+  padding:14px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  font-size:14px;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.gallery{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;}
+.gallery img{
+  width:130px;height:130px;object-fit:cover;
+  border-radius:8px;border:1px solid var(--border);
+  cursor:zoom-in;
+}
+.lightbox{
+  position:fixed;inset:0;background:rgba(0,0,0,.82);
+  display:none;align-items:center;justify-content:center;z-index:200;
+  padding:20px;
+}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:100%;max-height:100%;border-radius:6px;}
+.reply-box{
+  margin:14px 0;
+  padding:14px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.reply-box .k{font-size:13px;color:var(--text-secondary);margin-bottom:6px;}
+.reply-text{font-size:14px;white-space:pre-wrap;word-break:break-word;}
+.reply-empty{font-size:13px;color:var(--text-secondary);font-style:normal;}
+/* 管理 */
+.admin-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin:12px 0;
+}
+.admin-bar .who{font-size:13px;color:var(--text-secondary);}
+.admin-item{
+  padding:14px;
+  background:var(--card-bg);
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin:10px 0;
+}
+.admin-item .fb-head{margin-bottom:8px;}
+.admin-item textarea{
+  width:100%;min-height:70px;
+  padding:9px 11px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-family:inherit;
+  resize:vertical;
+  margin:8px 0;
+}
+.admin-item .save-btn{min-height:38px;padding:6px 14px;}
+/* 图片上传 */
+.img-upload{
+  display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;
+}
+.img-cell{position:relative;}
+.img-cell img{
+  width:90px;height:90px;object-fit:cover;
+  border-radius:8px;border:1px solid var(--border);
+  display:block;
+}
+.img-cell .del{
+  position:absolute;top:-8px;right:-8px;
+  width:22px;height:22px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--bg);
+  color:var(--text);
+  font-size:13px;line-height:1;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.img-add{
+  width:90px;height:90px;
+  border:1px dashed var(--border);
+  border-radius:8px;
+  background:transparent;
+  color:var(--text-secondary);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+}
+.img-add:hover{background:var(--hover-bg);color:var(--text);}
+.tip-msg{
+  min-height:20px;
+  font-size:13px;
+  margin:6px 0;
+  color:var(--text-secondary);
+}
+.tip-msg.error{color:var(--danger);}
+.tip-msg.ok{color:var(--success);}
+.toast{
+  position:fixed;left:50%;bottom:28px;
+  transform:translateX(-50%);
+  background:var(--primary);
+  color:var(--bg);
+  padding:10px 20px;
+  border-radius:8px;
+  font-size:14px;
+  box-shadow:0 6px 20px var(--shadow);
+  opacity:0;
+  transition:opacity .25s;
+  z-index:300;
+  pointer-events:none;
+  max-width:calc(100vw - 40px);
+  text-align:center;
+}
+.toast.show{opacity:1;}
+footer{
+  margin-top:34px;
+  padding:16px 0;
+  border-top:1px solid var(--border);
+  text-align:center;
+  color:var(--text-secondary);
+  font-size:13px;
+}
+@media(max-width:600px){
+  .nav-list{gap:6px;}
+  .nav-item button{padding:8px 11px;font-size:13px;}
+  .settings-panel{width:260px;}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-row">
+      <div>
+        <div class="site-title" data-i18n="siteTitle">The Slow Tide · 反馈中心</div>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" id="settingsBtn" aria-label="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="settings-panel" id="settingsPanel">
+          <div class="settings-title" data-i18n="settingsTitle">设置</div>
+          <div class="settings-group">
+            <div class="settings-label" data-i18n="themeSection">主题模式</div>
+            <div class="seg">
+              <button class="seg-btn" data-theme="system" data-i18n="themeSystem">跟随系统</button>
+              <button class="seg-btn" data-theme="light" data-i18n="themeLight">浅色</button>
+              <button class="seg-btn" data-theme="dark" data-i18n="themeDark">深色</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label" data-i18n="langSection">语言</div>
+            <div class="seg">
+              <button class="seg-btn" data-lang="zhCN" data-i18n="langZhCN">简体中文</button>
+              <button class="seg-btn" data-lang="zhTW" data-i18n="langZhTW">繁體中文</button>
+              <button class="seg-btn" data-lang="en" data-i18n="langEn">English</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav>
+    <ul class="nav-list">
+      <li class="nav-item"><button data-route="submit" data-i18n="navSubmit">提交反馈</button></li>
+      <li class="nav-item"><button data-route="list" data-i18n="navList">反馈列表</button></li>
+      <li class="nav-item"><button data-route="admin" data-i18n="navAdmin">管理入口</button></li>
+    </ul>
+  </nav>
+
+  <!-- ============ 视图：提交 ============ -->
+  <section id="view-submit" class="view">
+    <div class="card">
+      <h2 data-i18n="submitTitle">提交反馈</h2>
+      <div class="form-item">
+        <label class="form-label" for="f-gameid"><span class="req">*</span> <span data-i18n="fGameId">游戏ID</span></label>
+        <input type="text" id="f-gameid" maxlength="32" autocomplete="off">
+      </div>
+      <div class="form-item">
+        <label class="form-label" for="f-type"><span class="req">*</span> <span data-i18n="fType">反馈类型</span></label>
+        <select id="f-type">
+          <option value="bug" data-i18n="typeBug">BUG问题</option>
+          <option value="cheat" data-i18n="typeCheat">外挂作弊</option>
+          <option value="destroy" data-i18n="typeDestroy">恶意破坏</option>
+          <option value="suggest" data-i18n="typeSuggest">玩法建议</option>
+          <option value="appeal" data-i18n="typeAppeal">处罚申诉</option>
+          <option value="other" data-i18n="typeOther">其他</option>
+        </select>
+      </div>
+      <div class="form-item">
+        <label class="form-label" for="f-desc"><span class="req">*</span> <span data-i18n="fDesc">问题描述</span></label>
+        <textarea id="f-desc" maxlength="2000"></textarea>
+      </div>
+      <div class="form-item">
+        <label class="form-label" for="f-time" data-i18n="fTime">发生时间</label>
+        <input type="text" id="f-time" maxlength="40" autocomplete="off" placeholder="例如：2026-09-05 20:00">
+      </div>
+      <div class="form-item">
+        <label class="form-label" for="f-contact" data-i18n="fContact">联系方式</label>
+        <input type="text" id="f-contact" maxlength="32" autocomplete="off">
+      </div>
+      <div class="form-item">
+        <label class="form-label" data-i18n="fImages">上传截图</label>
+        <div class="img-upload" id="imgList"></div>
+        <input type="file" id="f-files" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+      </div>
+      <div class="tip-msg" id="submitTip"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="submitBtn" data-i18n="fSubmit">提交反馈</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 视图：列表 ============ -->
+  <section id="view-list" class="view">
+    <div class="list-toolbar">
+      <input type="text" id="listSearch" data-i18n-ph="searchPh" placeholder="搜索游戏ID或反馈编号…">
+      <select id="filterStatus">
+        <option value="" data-i18n="allStatus">全部状态</option>
+        <option value="pending" data-i18n="statusPending">待处理</option>
+        <option value="doing" data-i18n="statusDoing">处理中</option>
+        <option value="done" data-i18n="statusDone">已解决</option>
+      </select>
+      <select id="filterType">
+        <option value="" data-i18n="allType">全部类型</option>
+        <option value="bug" data-i18n="typeBug">BUG问题</option>
+        <option value="cheat" data-i18n="typeCheat">外挂作弊</option>
+        <option value="destroy" data-i18n="typeDestroy">恶意破坏</option>
+        <option value="suggest" data-i18n="typeSuggest">玩法建议</option>
+        <option value="appeal" data-i18n="typeAppeal">处罚申诉</option>
+        <option value="other" data-i18n="typeOther">其他</option>
+      </select>
+    </div>
+    <div id="listWrap"></div>
+  </section>
+
+  <!-- ============ 视图：详情 ============ -->
+  <section id="view-detail" class="view">
+    <button class="btn" id="detailBack" data-i18n="back">返回</button>
+    <div id="detailWrap"></div>
+  </section>
+
+  <!-- ============ 视图：管理 ============ -->
+  <section id="view-admin" class="view">
+    <div id="adminLogin">
+      <div class="card">
+        <h2 data-i18n="adminTitle">管理入口</h2>
+        <div class="form-item">
+          <label class="form-label" for="adminPwd" data-i18n="adminPwd">管理员口令</label>
+          <input type="password" id="adminPwd" maxlength="32">
+        </div>
+        <div class="tip-msg" id="adminTip"></div>
+        <div class="btn-row">
+          <button class="btn primary" id="adminLoginBtn" data-i18n="adminLogin">登录</button>
+        </div>
+      </div>
+    </div>
+    <div id="adminPanel" style="display:none;">
+      <div class="admin-bar">
+        <span class="who" id="adminWho"></span>
+        <button class="btn" id="adminLogout" style="min-height:34px;padding:6px 12px;" data-i18n="adminLogout">退出管理</button>
+      </div>
+      <div id="adminList"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p data-i18n="footer">© 2026 The Slow Tide · TST 服务器</p>
+  </footer>
+</div>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+/* ================================================================
+ * 云服务配置（部署后填写，即可开启多人共享数据）
+ * 在 leancloud.cn 注册并创建"开发版"应用后，把下面三项填上：
+ *   server : 应用设置里的 API 域名（形如 https://xxxx.api.lncldapi.com）
+ *   appId  : 应用凭证 AppID
+ *   appKey : 应用凭证 AppKey
+ * 三项留空时自动降级为"本地模式"（数据只存在当前浏览器）。
+ * ================================================================ */
+var SUPABASE = {
+  url: '/api',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppbGNiY29kcGh4cGFzaWNqZ2h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDUzNTgsImV4cCI6MjEwNDE4MTM1OH0._DkyiWyL5viXByCJ5ejFifn9RuEVkVHjAnU4oQepsbs'
+};
+
+/* ================================================================
+ * 三语词典
+ * ================================================================ */
+var I18N = {
+  zhCN: {
+    siteTitle:'The Slow Tide · 反馈中心',
+    settingsTitle:'设置',
+    themeSection:'主题模式',
+    langSection:'语言',
+    themeSystem:'跟随系统',
+    themeLight:'浅色',
+    themeDark:'深色',
+    langZhCN:'简体中文',
+    langZhTW:'繁體中文',
+    langEn:'English',
+    navSubmit:'提交反馈',
+    navList:'反馈列表',
+    navAdmin:'管理入口',
+    submitTitle:'提交反馈',
+    fGameId:'游戏ID',
+    fType:'反馈类型',
+    fDesc:'问题描述',
+    fTime:'发生时间',
+    fContact:'联系方式',
+    fImages:'上传截图',
+    fSubmit:'提交反馈',
+    typeBug:'BUG问题',
+    typeCheat:'外挂作弊',
+    typeDestroy:'恶意破坏',
+    typeSuggest:'玩法建议',
+    typeAppeal:'处罚申诉',
+    typeOther:'其他',
+    allStatus:'全部状态',
+    allType:'全部类型',
+    statusPending:'待处理',
+    statusDoing:'处理中',
+    statusDone:'已解决',
+    searchPh:'搜索游戏ID或反馈编号…',
+    listEmpty:'暂无反馈',
+    back:'返回',
+    detailNo:'反馈编号',
+    detailGameId:'游戏ID',
+    detailType:'类型',
+    detailTime:'提交时间',
+    detailContact:'联系方式',
+    detailStatus:'状态',
+    detailImages:'截图',
+    detailReply:'管理组回复',
+    detailNoReply:'暂无回复',
+    adminTitle:'管理入口',
+    adminPwd:'管理员口令',
+    adminLogin:'登录',
+    adminLogout:'退出管理',
+    adminWho:'管理视图',
+    adminWrong:'口令错误',
+    adminEmpty:'暂无可处理的反馈。',
+    adminReplyPh:'填写处理回复…',
+    adminSave:'保存',
+    adminSaved:'已保存',
+    adminDelete:'删除',
+    adminDeleteConfirm:'确定删除这条反馈吗？删除后不可恢复。',
+    adminDeleted:'已删除',
+    errFill:'请填写游戏ID与问题描述',
+    errNoName:'请填写游戏ID',
+    errNoDesc:'请填写问题描述',
+    errSubmitFail:'提交失败，请重试',
+    errCloud:'云服务请求失败，请检查配置或网络',
+    errLocal:'本地存储失败，可能是空间不足',
+    submitOk:'提交成功！反馈编号：',
+    imgTooMany:'最多上传3张图片',
+    imgTooBig:'图片超过5MB，请压缩后重试',
+    imgBadType:'仅支持 JPG/PNG/WebP 格式',
+    imgProcFail:'图片处理失败',
+    footer:'© 2026 The Slow Tide · TST 服务器'
+  },
+  zhTW: {
+    siteTitle:'The Slow Tide · 回饋中心',
+    settingsTitle:'設定',
+    themeSection:'主題模式',
+    langSection:'語言',
+    themeSystem:'跟隨系統',
+    themeLight:'淺色',
+    themeDark:'深色',
+    langZhCN:'简体中文',
+    langZhTW:'繁體中文',
+    langEn:'English',
+    navSubmit:'提交回饋',
+    navList:'回饋列表',
+    navAdmin:'管理入口',
+    submitTitle:'提交回饋',
+    fGameId:'遊戲ID',
+    fType:'回饋類型',
+    fDesc:'問題描述',
+    fTime:'發生時間',
+    fContact:'聯絡方式',
+    fImages:'上傳截圖',
+    fSubmit:'提交回饋',
+    typeBug:'BUG問題',
+    typeCheat:'外掛作弊',
+    typeDestroy:'惡意破壞',
+    typeSuggest:'玩法建議',
+    typeAppeal:'處罰申訴',
+    typeOther:'其他',
+    allStatus:'全部狀態',
+    allType:'全部類型',
+    statusPending:'待處理',
+    statusDoing:'處理中',
+    statusDone:'已解決',
+    searchPh:'搜尋遊戲ID或回饋編號…',
+    listEmpty:'暫無回饋',
+    back:'返回',
+    detailNo:'回饋編號',
+    detailGameId:'遊戲ID',
+    detailType:'類型',
+    detailTime:'提交時間',
+    detailContact:'聯絡方式',
+    detailStatus:'狀態',
+    detailImages:'截圖',
+    detailReply:'管理組回覆',
+    detailNoReply:'暫無回覆',
+    adminTitle:'管理入口',
+    adminPwd:'管理員口令',
+    adminLogin:'登入',
+    adminLogout:'退出管理',
+    adminWho:'管理視圖',
+    adminWrong:'口令錯誤',
+    adminEmpty:'暫無可處理的回饋。',
+    adminReplyPh:'填寫處理回覆…',
+    adminSave:'儲存',
+    adminSaved:'已儲存',
+    adminDelete:'刪除',
+    adminDeleteConfirm:'確定刪除這條回饋嗎？刪除後不可恢復。',
+    adminDeleted:'已刪除',
+    errFill:'請填寫遊戲ID與問題描述',
+    errNoName:'請填寫遊戲ID',
+    errNoDesc:'請填寫問題描述',
+    errSubmitFail:'提交失敗，請重試',
+    errCloud:'雲服務請求失敗，請檢查配置或網路',
+    errLocal:'本地儲存失敗，可能是空間不足',
+    submitOk:'提交成功！回饋編號：',
+    imgTooMany:'最多上傳3張圖片',
+    imgTooBig:'圖片超過5MB，請壓縮後重試',
+    imgBadType:'僅支援 JPG/PNG/WebP 格式',
+    imgProcFail:'圖片處理失敗',
+    footer:'© 2026 The Slow Tide · TST 伺服器'
+  },
+  en: {
+    siteTitle:'The Slow Tide · Feedback Hub',
+    settingsTitle:'Settings',
+    themeSection:'Theme',
+    langSection:'Language',
+    themeSystem:'Follow System',
+    themeLight:'Light',
+    themeDark:'Dark',
+    langZhCN:'简体中文',
+    langZhTW:'繁體中文',
+    langEn:'English',
+    navSubmit:'Submit',
+    navList:'Feedback List',
+    navAdmin:'Admin',
+    submitTitle:'Submit Feedback',
+    fGameId:'Game ID',
+    fType:'Feedback Type',
+    fDesc:'Description',
+    fTime:'Time of occurrence',
+    fContact:'Contact',
+    fImages:'Screenshots',
+    fSubmit:'Submit',
+    typeBug:'Bug Report',
+    typeCheat:'Cheating',
+    typeDestroy:'Malicious Damage',
+    typeSuggest:'Suggestion',
+    typeAppeal:'Appeal',
+    typeOther:'Other',
+    allStatus:'All Statuses',
+    allType:'All Types',
+    statusPending:'Pending',
+    statusDoing:'In Progress',
+    statusDone:'Resolved',
+    searchPh:'Search game ID or feedback no…',
+    listEmpty:'No feedback yet.',
+    back:'Back',
+    detailNo:'Feedback No.',
+    detailGameId:'Game ID',
+    detailType:'Type',
+    detailTime:'Submitted',
+    detailContact:'Contact',
+    detailStatus:'Status',
+    detailImages:'Screenshots',
+    detailReply:'Admin Reply',
+    detailNoReply:'No reply yet.',
+    adminTitle:'Admin',
+    adminPwd:'Admin Password',
+    adminLogin:'Sign In',
+    adminLogout:'Sign Out',
+    adminWho:'Admin mode.',
+    adminWrong:'Wrong password',
+    adminEmpty:'No feedback to handle.',
+    adminReplyPh:'Write a reply…',
+    adminSave:'Save',
+    adminSaved:'Saved',
+    adminDelete:'Delete',
+    adminDeleteConfirm:'Delete this feedback? This cannot be undone.',
+    adminDeleted:'Deleted',
+    errFill:'Please fill in game ID and description',
+    errNoName:'Please fill in your game ID',
+    errNoDesc:'Please describe the problem',
+    errSubmitFail:'Submit failed, please retry',
+    errCloud:'Cloud request failed. Check config or network',
+    errLocal:'Local storage failed, possibly out of space',
+    submitOk:'Submitted! Feedback No.: ',
+    imgTooMany:'Maximum 3 images',
+    imgTooBig:'Image exceeds 5MB, please compress and retry',
+    imgBadType:'Only JPG/PNG/WebP are supported',
+    imgProcFail:'Image processing failed',
+    footer:'© 2026 The Slow Tide · TST Server'
+  }
+};
+
+/* ================================================================
+ * 状态
+ * ================================================================ */
+var root = document.documentElement;
+var lang = localStorage.getItem('tstfb-lang') || 'zhCN';
+var ADMIN_PWD = 'WYJQQNLDYWHM';
+var MAX_IMAGES = 3;
+var MAX_IMG_BYTES = 5 * 1024 * 1024;
+
+function t(key){
+  var d = I18N[lang];
+  return d && d[key] != null ? d[key] : key;
+}
+
+/* ================================================================
+ * 工具
+ * ================================================================ */
+function escapeHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function fmtTime(ts){
+  if (!ts) return '';
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return String(ts);
+  function p(n){ return n < 10 ? '0' + n : '' + n; }
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function genNo(){
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var s = '';
+  for (var i = 0; i < 6; i++) { s += chars.charAt(Math.floor(Math.random() * chars.length)); }
+  return 'TST-' + s;
+}
+function showToast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(function(){ el.classList.remove('show'); }, 2600);
+}
+
+/* ================================================================
+ * 主题 / 语言
+ * ================================================================ */
+function themeState(){ return localStorage.getItem('tstfb-theme') || 'system'; }
+function applyTheme(){
+  var mode = themeState();
+  var dark;
+  if (mode === 'system') { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
+  else { dark = (mode === 'dark'); }
+  root.classList.toggle('dark', dark);
+  syncSettingsUI();
+}
+function applyLang(){
+  document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'zhTW' ? 'zh-Hant' : 'zh-CN');
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    if (I18N[lang][k] != null) { el.textContent = I18N[lang][k]; }
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k = el.getAttribute('data-i18n-ph');
+    if (I18N[lang][k] != null) { el.setAttribute('placeholder', I18N[lang][k]); }
+  });
+  syncSettingsUI();
+  if (currentRoute === 'list') { renderList(); }
+  if (currentRoute === 'detail' && detailId) { renderDetail(detailId); }
+  if (currentRoute === 'admin' && isAdmin) { renderAdminList(); }
+  updateNav();
+}
+function syncSettingsUI(){
+  var mode = themeState();
+  document.querySelectorAll('.seg-btn[data-theme]').forEach(function(b){
+    b.classList.toggle('active', b.dataset.theme === mode);
+  });
+  document.querySelectorAll('.seg-btn[data-lang]').forEach(function(b){
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+}
+/* ================================================================
+ * 设置面板
+ * ================================================================ */
+var settingsBtn = document.getElementById('settingsBtn');
+var settingsPanel = document.getElementById('settingsPanel');
+settingsBtn.addEventListener('click', function(e){
+  e.stopPropagation();
+  settingsPanel.classList.toggle('open');
+});
+document.addEventListener('click', function(e){
+  if (!e.target.closest('.settings-panel') && !e.target.closest('#settingsBtn')) {
+    settingsPanel.classList.remove('open');
+  }
+});
+document.querySelectorAll('.seg-btn[data-theme]').forEach(function(b){
+  b.addEventListener('click', function(){
+    localStorage.setItem('tstfb-theme', b.dataset.theme);
+    applyTheme();
+  });
+});
+document.querySelectorAll('.seg-btn[data-lang]').forEach(function(b){
+  b.addEventListener('click', function(){
+    lang = b.dataset.lang;
+    localStorage.setItem('tstfb-lang', lang);
+    applyLang();
+  });
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+  if (themeState() === 'system') { applyTheme(); }
+});
+
+/* ================================================================
+ * 路由
+ * ================================================================ */
+var currentRoute = 'submit';
+var detailId = null;
+var isAdmin = sessionStorage.getItem('tstfb-admin') === '1' ||
+  !!(isCloud() && sessionStorage.getItem('tstfb-admin-pwd'));
+
+var routeViews = {
+  submit: document.getElementById('view-submit'),
+  list: document.getElementById('view-list'),
+  detail: document.getElementById('view-detail'),
+  admin: document.getElementById('view-admin')
+};
+var navBtns = document.querySelectorAll('.nav-item button');
+function updateNav(){
+  navBtns.forEach(function(b){
+    b.classList.toggle('active', b.dataset.route === currentRoute);
+  });
+}
+function switchRoute(route){
+  currentRoute = route;
+  Object.keys(routeViews).forEach(function(k){
+    routeViews[k].classList.toggle('active', k === route);
+  });
+  updateNav();
+  if (route === 'list') { renderList(); }
+  if (route === 'detail') { renderDetail(detailId); }
+  if (route === 'admin') { renderAdmin(); }
+  window.scrollTo(0, 0);
+}
+function parseHash(){
+  var h = location.hash || '#/submit';
+  if (h.indexOf('#/detail') === 0) {
+    var m = h.match(/id=([^&]+)/);
+    detailId = m ? decodeURIComponent(m[1]) : null;
+    switchRoute('detail');
+  } else if (h.indexOf('#/list') === 0) {
+    switchRoute('list');
+  } else if (h.indexOf('#/admin') === 0) {
+    switchRoute('admin');
+  } else {
+    switchRoute('submit');
+  }
+}
+window.addEventListener('hashchange', parseHash);
+navBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    location.hash = '#/' + b.dataset.route;
+  });
+});
+
+/* ================================================================
+ * 数据层：LeanCloud REST（云模式） + localStorage（本地模式）
+ * ================================================================ */
+function isCloud(){ return !!(SUPABASE.url && SUPABASE.anonKey); }
+
+function cloudHeaders(){
+  return {
+    'apikey': SUPABASE.anonKey,
+    'Authorization': 'Bearer ' + SUPABASE.anonKey,
+    'Content-Type': 'application/json'
+  };
+}
+function cloudGet(path){
+  return fetch(SUPABASE.url + path, { headers: cloudHeaders() }).then(function(r){
+    if (!r.ok) { throw new Error('HTTP ' + r.status); }
+    return r.json();
+  });
+}
+function cloudPost(path, body, headers){
+  var h = headers || cloudHeaders();
+  return fetch(SUPABASE.url + path, {
+    method: 'POST',
+    headers: h,
+    body: body
+  }).then(function(r){
+    if (!r.ok) {
+      return r.text().then(function(txt){
+        var parsed = null;
+        try { parsed = JSON.parse(txt); } catch (e) {}
+        var err = new Error('HTTP ' + r.status);
+        err.status = r.status;
+        err.body = parsed;
+        throw err;
+      });
+    }
+    return r.json();
+  });
+}
+/* 调用 Supabase RPC 函数 admin_action（云端校验口令，口令不暴露在前端） */
+function callFunction(name, params){
+  var action = name.replace('admin','').toLowerCase();
+  var body = { p_action: action, p_password: params.password };
+  if (params.id) body.p_id = params.id;
+  if (params.status !== undefined) body.p_status = params.status;
+  if (params.reply !== undefined) body.p_reply = params.reply;
+  return cloudPost('/rest/v1/rpc/admin_action', JSON.stringify(body)).then(function(res){
+    if (res === 'wrong_password') {
+      var err = new Error('wrong password');
+      err.body = { error: '口令错误' };
+      throw err;
+    }
+    return { ok: true, result: res };
+  });
+}
+function normalizeItem(o){
+  return {
+    id: o.id,
+    no: o.no || '',
+    gameId: o.gameId || '',
+    type: o.type || 'other',
+    description: o.description || '',
+    occurTime: o.occurTime || '',
+    contact: o.contact || '',
+    status: o.status || 'pending',
+    reply: o.reply || '',
+    images: o.images || [],
+    createdAt: o.created_at || ''
+  };
+}
+function createdAtToTs(item){
+  if (item._ts) { return item._ts; }
+  var raw = item.createdAt;
+  if (typeof raw === 'string') {
+    var ts = Date.parse(raw);
+    if (!isNaN(ts)) { return ts; }
+    return 0;
+  }
+  return raw ? new Date(raw).getTime() : 0;
+}
+
+function fetchAll(){
+  if (isCloud()) {
+    return cloudGet('/rest/v1/Feedback?select=*&order=created_at.desc&limit=500').then(function(res){
+      return (res || []).map(normalizeItem);
+    });
+  }
+  return Promise.resolve(localList());
+}
+function saveOne(obj){
+  if (isCloud()) {
+    var hdrs = Object.assign({}, cloudHeaders(), { 'Prefer': 'return=representation' });
+    return cloudPost('/rest/v1/Feedback', JSON.stringify(obj), hdrs).then(function(res){
+      var it = normalizeItem(res[0]);
+      it.no = it.no || obj.no;
+      it._ts = Date.now();
+      return it;
+    });
+  }
+  return new Promise(function(resolve, reject){
+    try {
+      var list = localList();
+      var now = Date.now();
+      var it = {
+        id: 'L' + now + Math.floor(Math.random() * 1000),
+        no: obj.no,
+        gameId: obj.gameId,
+        type: obj.type,
+        description: obj.description,
+        occurTime: obj.occurTime || '',
+        contact: obj.contact || '',
+        status: 'pending',
+        reply: '',
+        images: obj.images || [],
+        createdAt: now,
+        _ts: now
+      };
+      list.unshift(it);
+      localStorage.setItem('tstfb_local', JSON.stringify(list));
+      resolve(it);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+function updateOne(id, patch){
+  if (isCloud()) {
+    var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+    return callFunction('adminUpdate', {
+      id: id, password: pwd,
+      status: patch.status, reply: patch.reply
+    });
+  }
+  return new Promise(function(resolve, reject){
+    try {
+      var list = localList();
+      var hit = null;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) { hit = list[i]; break; }
+      }
+      if (!hit) { return reject(new Error('not found')); }
+      for (var k in patch) { if (patch.hasOwnProperty(k)) { hit[k] = patch[k]; } }
+      localStorage.setItem('tstfb_local', JSON.stringify(list));
+      resolve(hit);
+    } catch (e) { reject(e); }
+  });
+}
+function localList(){
+  try {
+    var raw = localStorage.getItem('tstfb_local');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) { return []; }
+}
+function deleteOne(id){
+  if (isCloud()) {
+    var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+    return callFunction('adminDelete', { id: id, password: pwd });
+  }
+  return new Promise(function(resolve, reject){
+    try {
+      var list = localList();
+      var next = list.filter(function(x){ return x.id !== id; });
+      localStorage.setItem('tstfb_local', JSON.stringify(next));
+      resolve({ ok: true });
+    } catch (e) { reject(e); }
+  });
+}
+function uploadImage(img){
+  if (isCloud()) {
+    var name = 'fb_' + Date.now() + '_' + Math.floor(Math.random() * 100000) + '.jpg';
+    return fetch(SUPABASE.url + '/storage/v1/object/feedback-images/' + name, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE.anonKey,
+        'Authorization': 'Bearer ' + SUPABASE.anonKey,
+        'Content-Type': 'image/jpeg'
+      },
+      body: img.blob
+    }).then(function(r){
+      if (!r.ok) { throw new Error('upload failed'); }
+      return SUPABASE.url + '/storage/v1/object/public/feedback-images/' + name;
+    });
+  }
+  return Promise.resolve(img.dataUrl);
+}
+
+/* ================================================================
+ * 图片压缩
+ * ================================================================ */
+function compressImage(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var MAX_SIDE = 1200;
+        var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+        var w = Math.round(img.width * scale);
+        var h = Math.round(img.height * scale);
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        canvas.toBlob(function(blob){
+          resolve({ name: file.name, dataUrl: dataUrl, blob: blob });
+        }, 'image/jpeg', 0.85);
+      };
+      img.onerror = function(){ reject(new Error('img load fail')); };
+      img.src = reader.result;
+    };
+    reader.onerror = function(){ reject(new Error('read fail')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ================================================================
+ * 提交表单
+ * ================================================================ */
+var pickedImages = [];
+function renderImgList(){
+  var box = document.getElementById('imgList');
+  box.innerHTML = '';
+  pickedImages.forEach(function(img, idx){
+    var cell = document.createElement('div');
+    cell.className = 'img-cell';
+    var im = document.createElement('img');
+    im.src = img.dataUrl;
+    im.alt = 'screenshot';
+    var del = document.createElement('button');
+    del.className = 'del';
+    del.type = 'button';
+    del.setAttribute('aria-label', 'remove');
+    del.innerHTML = '&#10005;';
+    del.addEventListener('click', function(){
+      pickedImages.splice(idx, 1);
+      renderImgList();
+    });
+    cell.appendChild(im);
+    cell.appendChild(del);
+    box.appendChild(cell);
+  });
+  if (pickedImages.length < MAX_IMAGES) {
+    var add = document.createElement('button');
+    add.className = 'img-add';
+    add.type = 'button';
+    add.setAttribute('aria-label', 'add');
+    add.innerHTML = '+';
+    add.addEventListener('click', function(){ document.getElementById('f-files').click(); });
+    box.appendChild(add);
+  }
+}
+document.getElementById('f-files').addEventListener('change', function(){
+  var tip = document.getElementById('submitTip');
+  var files = Array.prototype.slice.call(this.files);
+  this.value = '';
+  if (!files.length) { return; }
+  var remain = MAX_IMAGES - pickedImages.length;
+  if (files.length > remain) {
+    tip.textContent = t('imgTooMany');
+    tip.className = 'tip-msg error';
+    return;
+  }
+  var badType = files.some(function(f){ return !/^image\/(jpeg|png|webp)$/.test(f.type); });
+  if (badType) {
+    tip.textContent = t('imgBadType');
+    tip.className = 'tip-msg error';
+    return;
+  }
+  var tooBig = files.some(function(f){ return f.size > MAX_IMG_BYTES; });
+  if (tooBig) {
+    tip.textContent = t('imgTooBig');
+    tip.className = 'tip-msg error';
+    return;
+  }
+  var queue = files.map(function(f){ return compressImage(f); });
+  Promise.all(queue).then(function(items){
+    pickedImages = pickedImages.concat(items);
+    renderImgList();
+    tip.textContent = '';
+    tip.className = 'tip-msg';
+  }).catch(function(){
+    tip.textContent = t('imgProcFail');
+    tip.className = 'tip-msg error';
+  });
+});
+renderImgList();
+
+document.getElementById('submitBtn').addEventListener('click', function(){
+  var tip = document.getElementById('submitTip');
+  var gameId = document.getElementById('f-gameid').value.trim();
+  var type = document.getElementById('f-type').value;
+  var desc = document.getElementById('f-desc').value.trim();
+  var occur = document.getElementById('f-time').value.trim();
+  var contact = document.getElementById('f-contact').value.trim();
+  if (!gameId) { tip.textContent = t('errNoName'); tip.className = 'tip-msg error'; return; }
+  if (!desc) { tip.textContent = t('errNoDesc'); tip.className = 'tip-msg error'; return; }
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  tip.textContent = '';
+  tip.className = 'tip-msg';
+  var no = genNo();
+  var uploads = pickedImages.map(function(img){ return uploadImage(img.dataUrl); });
+  Promise.all(uploads).then(function(urls){
+    var obj = {
+      no: no,
+      gameId: gameId,
+      type: type,
+      description: desc,
+      occurTime: occur,
+      contact: contact,
+      status: 'pending',
+      reply: '',
+      images: urls
+    };
+    return saveOne(obj);
+  }).then(function(item){
+    document.getElementById('f-gameid').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-time').value = '';
+    document.getElementById('f-contact').value = '';
+    pickedImages = [];
+    renderImgList();
+    tip.textContent = t('submitOk') + item.no;
+    tip.className = 'tip-msg ok';
+    showToast(t('submitOk') + ' ' + item.no);
+    setTimeout(function(){
+      location.hash = '#/detail?id=' + encodeURIComponent(item.id);
+    }, 900);
+  }).catch(function(){
+    tip.textContent = isCloud() ? t('errCloud') : t('errSubmitFail');
+    tip.className = 'tip-msg error';
+  }).finally(function(){
+    btn.disabled = false;
+  });
+});
+
+/* ================================================================
+ * 列表
+ * ================================================================ */
+var listCache = null;
+function typeName(v){ return t('type' + v.charAt(0).toUpperCase() + v.slice(1)) || v; }
+function statusName(v){
+  if (v === 'pending') { return t('statusPending'); }
+  if (v === 'doing') { return t('statusDoing'); }
+  if (v === 'done') { return t('statusDone'); }
+  return v;
+}
+function statusClass(v){
+  if (v === 'doing') { return 'doing'; }
+  if (v === 'done') { return 'done'; }
+  return 'pending';
+}
+function renderList(){
+  var wrap = document.getElementById('listWrap');
+  var kw = (document.getElementById('listSearch').value || '').trim().toLowerCase();
+  var fs = document.getElementById('filterStatus').value;
+  var ft = document.getElementById('filterType').value;
+  fetchAll().then(function(all){
+    listCache = all;
+    var list = all.filter(function(it){
+      if (fs && it.status !== fs) { return false; }
+      if (ft && it.type !== ft) { return false; }
+      if (kw) {
+        var hay = (it.no + ' ' + it.gameId + ' ' + it.description).toLowerCase();
+        if (hay.indexOf(kw) === -1) { return false; }
+      }
+      return true;
+    });
+    if (!list.length) {
+      wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
+      return;
+    }
+    var html = '';
+    list.forEach(function(it){
+      var ts = createdAtToTs(it);
+      var thumbs = '';
+      (it.images || []).slice(0, 3).forEach(function(u){
+        thumbs += '<img src="' + escapeHtml(u) + '" alt="shot">';
+      });
+      html +=
+        '<div class="fb-card" data-id="' + escapeHtml(it.id) + '">' +
+          '<div class="fb-head">' +
+            '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
+            '<span class="fb-type">' + escapeHtml(typeName(it.type)) + '</span>' +
+            '<span class="fb-status ' + statusClass(it.status) + '">' + escapeHtml(statusName(it.status)) + '</span>' +
+            '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>' +
+          '</div>' +
+          '<div class="fb-desc">' + escapeHtml(it.description) + '</div>' +
+          (thumbs ? '<div class="fb-thumbs">' + thumbs + '</div>' : '') +
+        '</div>';
+    });
+    wrap.innerHTML = html;
+    Array.prototype.forEach.call(wrap.querySelectorAll('.fb-card'), function(card){
+      card.addEventListener('click', function(){
+        location.hash = '#/detail?id=' + encodeURIComponent(card.dataset.id);
+      });
+    });
+  }).catch(function(){
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
+  });
+}
+document.getElementById('listSearch').addEventListener('input', function(){
+  if (currentRoute === 'list') { renderList(); }
+});
+document.getElementById('filterStatus').addEventListener('change', function(){
+  if (currentRoute === 'list') { renderList(); }
+});
+document.getElementById('filterType').addEventListener('change', function(){
+  if (currentRoute === 'list') { renderList(); }
+});
+
+/* ================================================================
+ * 详情
+ * ================================================================ */
+document.getElementById('detailBack').addEventListener('click', function(){
+  location.hash = '#/list';
+});
+function renderDetail(id){
+  var wrap = document.getElementById('detailWrap');
+  if (!id) {
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
+    return;
+  }
+  fetchAll().then(function(all){
+    var it = null;
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id) { it = all[i]; break; }
+    }
+    if (!it) {
+      wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
+      return;
+    }
+    var ts = createdAtToTs(it);
+    var gallery = '';
+    (it.images || []).forEach(function(u){
+      gallery += '<img src="' + escapeHtml(u) + '" alt="shot" data-full="' + escapeHtml(u) + '">';
+    });
+    var replyHtml = it.reply
+      ? '<div class="reply-text">' + escapeHtml(it.reply) + '</div>'
+      : '<div class="reply-empty">' + escapeHtml(t('detailNoReply')) + '</div>';
+    wrap.innerHTML =
+      '<div class="card">' +
+        '<div class="fb-head">' +
+          '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
+          '<span class="fb-status ' + statusClass(it.status) + '">' + escapeHtml(statusName(it.status)) + '</span>' +
+        '</div>' +
+        '<div class="detail-meta">' +
+          '<div class="row"><span class="k">' + escapeHtml(t('detailGameId')) + '</span><span>' + escapeHtml(it.gameId) + '</span></div>' +
+          '<div class="row"><span class="k">' + escapeHtml(t('detailType')) + '</span><span>' + escapeHtml(typeName(it.type)) + '</span></div>' +
+          '<div class="row"><span class="k">' + escapeHtml(t('detailTime')) + '</span><span>' + escapeHtml(fmtTime(ts)) + '</span></div>' +
+          (it.occurTime ? '<div class="row"><span class="k">' + escapeHtml(t('fTime')) + '</span><span>' + escapeHtml(it.occurTime) + '</span></div>' : '') +
+          (it.contact ? '<div class="row"><span class="k">' + escapeHtml(t('detailContact')) + '</span><span>' + escapeHtml(it.contact) + '</span></div>' : '') +
+        '</div>' +
+        '<div class="detail-body">' + escapeHtml(it.description) + '</div>' +
+        (gallery ? '<div class="gallery">' + gallery + '</div>' : '') +
+      '</div>' +
+      '<div class="card reply-box">' +
+        '<div class="k">' + escapeHtml(t('detailReply')) + '</div>' +
+        replyHtml +
+      '</div>';
+    Array.prototype.forEach.call(wrap.querySelectorAll('.gallery img'), function(im){
+      im.addEventListener('click', function(){
+        document.getElementById('lightboxImg').src = im.dataset.full;
+        document.getElementById('lightbox').classList.add('open');
+      });
+    });
+  }).catch(function(){
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
+  });
+}
+
+/* ================================================================
+ * 灯箱
+ * ================================================================ */
+document.getElementById('lightbox').addEventListener('click', function(){
+  this.classList.remove('open');
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') {
+    document.getElementById('lightbox').classList.remove('open');
+    settingsPanel.classList.remove('open');
+  }
+});
+
+/* ================================================================
+ * 管理
+ * ================================================================ */
+function renderAdmin(){
+  var login = document.getElementById('adminLogin');
+  var panel = document.getElementById('adminPanel');
+  if (isAdmin) {
+    login.style.display = 'none';
+    panel.style.display = 'block';
+    document.getElementById('adminWho').textContent = t('adminWho');
+    renderAdminList();
+  } else {
+    login.style.display = 'block';
+    panel.style.display = 'none';
+  }
+}
+document.getElementById('adminLoginBtn').addEventListener('click', function(){
+  var pwd = document.getElementById('adminPwd').value;
+  var tip = document.getElementById('adminTip');
+  tip.className = 'tip-msg';
+  function ok(){
+    isAdmin = true;
+    if (isCloud()) { sessionStorage.setItem('tstfb-admin-pwd', pwd); }
+    else { sessionStorage.setItem('tstfb-admin', '1'); }
+    document.getElementById('adminPwd').value = '';
+    tip.textContent = '';
+    renderAdmin();
+  }
+  function fail(e){
+    if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) {
+      tip.textContent = t('adminWrong');
+      tip.className = 'tip-msg error';
+    } else if (isCloud()) {
+      tip.textContent = t('errCloud');
+      tip.className = 'tip-msg error';
+    } else {
+      tip.textContent = t('adminWrong');
+      tip.className = 'tip-msg error';
+    }
+  }
+  if (isCloud()) {
+    callFunction('adminLogin', { password: pwd }).then(ok).catch(fail);
+  } else {
+    if (pwd === ADMIN_PWD) { ok(); } else { fail(); }
+  }
+});
+document.getElementById('adminLogout').addEventListener('click', function(){
+  isAdmin = false;
+  sessionStorage.removeItem('tstfb-admin');
+  sessionStorage.removeItem('tstfb-admin-pwd');
+  renderAdmin();
+});
+function renderAdminList(){
+  var wrap = document.getElementById('adminList');
+  fetchAll().then(function(all){
+    if (!all.length) {
+      wrap.innerHTML = '<div class="empty">' + escapeHtml(t('adminEmpty')) + '</div>';
+      return;
+    }
+    wrap.innerHTML = '';
+    all.forEach(function(it){
+      var ts = createdAtToTs(it);
+      var card = document.createElement('div');
+      card.className = 'admin-item';
+      var head = document.createElement('div');
+      head.className = 'fb-head';
+      head.innerHTML =
+        '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
+        '<span class="fb-type">' + escapeHtml(it.gameId) + ' · ' + escapeHtml(typeName(it.type)) + '</span>' +
+        '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>';
+      var desc = document.createElement('div');
+      desc.className = 'fb-desc';
+      desc.textContent = it.description;
+      var selRow = document.createElement('div');
+      selRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;';
+      var selLabel = document.createElement('span');
+      selLabel.className = 'k';
+      selLabel.style.cssText = 'font-size:13px;color:var(--text-secondary);';
+      selLabel.textContent = t('detailStatus') + ': ';
+      var sel = document.createElement('select');
+      sel.style.cssText = 'padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:14px;';
+      [['pending', t('statusPending')], ['doing', t('statusDoing')], ['done', t('statusDone')]].forEach(function(p){
+        var op = document.createElement('option');
+        op.value = p[0];
+        op.textContent = p[1];
+        if (it.status === p[0]) { op.selected = true; }
+        sel.appendChild(op);
+      });
+      selRow.appendChild(selLabel);
+      selRow.appendChild(sel);
+      var ta = document.createElement('textarea');
+      ta.placeholder = t('adminReplyPh');
+      ta.value = it.reply || '';
+      var save = document.createElement('button');
+      save.className = 'btn save-btn';
+      save.textContent = t('adminSave');
+      save.addEventListener('click', function(){
+        save.disabled = true;
+        var run;
+        if (isCloud()) {
+          var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+          run = callFunction('adminUpdate', { id: it.id, status: sel.value, reply: ta.value, password: pwd });
+        } else {
+          run = updateOne(it.id, { status: sel.value, reply: ta.value });
+        }
+        run.then(function(){
+          showToast(t('adminSaved'));
+        }).catch(function(e){
+          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+          else { showToast(t('errCloud')); }
+        }).finally(function(){
+          save.disabled = false;
+        });
+      });
+      var del = document.createElement('button');
+      del.className = 'btn save-btn';
+      del.textContent = t('adminDelete');
+      del.style.cssText = 'min-height:38px;padding:6px 14px;color:var(--danger);border-color:var(--danger);';
+      del.addEventListener('click', function(){
+        if (!window.confirm(t('adminDeleteConfirm'))) { return; }
+        del.disabled = true;
+        var run;
+        if (isCloud()) {
+          var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+          run = callFunction('adminDelete', { id: it.id, password: pwd });
+        } else {
+          run = deleteOne(it.id);
+        }
+        run.then(function(){
+          showToast(t('adminDeleted'));
+          renderAdminList();
+        }).catch(function(e){
+          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+          else { showToast(t('errCloud')); }
+          del.disabled = false;
+        });
+      });
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;';
+      btnRow.appendChild(save);
+      btnRow.appendChild(del);
+      card.appendChild(head);
+      card.appendChild(desc);
+      card.appendChild(selRow);
+      card.appendChild(ta);
+      card.appendChild(btnRow);
+      wrap.appendChild(card);
+    });
+  }).catch(function(){
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
+  });
+}
+
+/* ================================================================
+ * 初始化
+ * ================================================================ */
+applyTheme();
+applyLang();
+parseHash();
+})();
+</script>
+</body>
+</html>
