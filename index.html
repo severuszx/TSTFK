@@ -1102,21 +1102,7 @@ function deleteOne(id){
   });
 }
 function uploadImage(img){
-  if (isCloud()) {
-    var name = 'fb_' + Date.now() + '_' + Math.floor(Math.random() * 100000) + '.jpg';
-    return fetch(SUPABASE.url + '/storage/v1/object/feedback-images/' + name, {
-      method: 'POST',
-      headers: {
-        'apikey': SUPABASE.anonKey,
-        'Authorization': 'Bearer ' + SUPABASE.anonKey,
-        'Content-Type': 'image/jpeg'
-      },
-      body: img.blob
-    }).then(function(r){
-      if (!r.ok) { throw new Error('upload failed'); }
-      return SUPABASE.url + '/storage/v1/object/public/feedback-images/' + name;
-    });
-  }
+  // 图片以 base64 dataUrl 形式直接存在 D1 数据库里，不需要对象存储
   return Promise.resolve(img.dataUrl);
 }
 
@@ -1129,7 +1115,7 @@ function compressImage(file){
     reader.onload = function(){
       var img = new Image();
       img.onload = function(){
-        var MAX_SIDE = 1200;
+        var MAX_SIDE = 800;
         var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
         var w = Math.round(img.width * scale);
         var h = Math.round(img.height * scale);
@@ -1138,10 +1124,10 @@ function compressImage(file){
         canvas.height = h;
         var ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, w, h);
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         canvas.toBlob(function(blob){
           resolve({ name: file.name, dataUrl: dataUrl, blob: blob });
-        }, 'image/jpeg', 0.85);
+        }, 'image/jpeg', 0.7);
       };
       img.onerror = function(){ reject(new Error('img load fail')); };
       img.src = reader.result;
