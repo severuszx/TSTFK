@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -6,237 +6,214 @@
 <title>The Slow Tide · 反馈中心</title>
 <script>
 (function(){
-  var mode = localStorage.getItem('tstfb-theme') || 'system';
-  var dark;
-  if (mode === 'system') { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
-  else { dark = (mode === 'dark'); }
-  if (dark) { document.documentElement.classList.add('dark'); }
-  var lang = localStorage.getItem('tstfb-lang') || 'zhCN';
-  document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'zhTW' ? 'zh-Hant' : 'zh-CN');
+// 主题：浅色 / 深色，localStorage 优先，默认浅色（与官网一致）
+var mode = 'light';
+try { mode = localStorage.getItem('tstfb-theme'); } catch (e) {}
+if (mode !== 'dark' && mode !== 'light') { mode = 'light'; }
+document.documentElement.setAttribute('data-theme', mode);
+document.documentElement.lang = 'zh-CN';
 })();
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#ffffff;
-  --text:#333333;
-  --text-secondary:#666666;
-  --border:#e5e7eb;
-  --card-bg:#f7f7f7;
-  --hover-bg:#ececec;
-  --primary:#444444;
-  --accent:#555555;
-  --accent-text:#ffffff;
-  --shadow:rgba(0,0,0,.10);
-  --danger:#c0392b;
-  --info:#2471a3;
-  --success:#1e8449;
-  --tag-pending-bg:#ececec;
-  --tag-pending-text:#555555;
-  --tag-doing-bg:#d6eaf8;
-  --tag-doing-text:#1a5276;
-  --tag-done-bg:#d5f5e3;
-  --tag-done-text:#145a32;
+  --bg:#f3f5f8;
+  --text:#1f2937;
+  --text-secondary:#5b6675;
+  --border:#e2e8f0;
+  --card:#ffffff;
+  --hover:#eef2f7;
+  --header-bg:rgba(255,255,255,.92);
+  --primary:#0f172a;
+  --accent:#52525b;
+  --accent-soft:rgba(82,82,91,.1);
+  --shadow:0 4px 14px rgba(15,23,42,.07);
+  --hero-grad:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);
+  --danger:#b91c1c;
+  --info:#1d4ed8;
+  --success:#15803d;
+  --tag-pending-bg:#f1f5f9;
+  --tag-pending-text:#475569;
+  --tag-doing-bg:#dbeafe;
+  --tag-doing-text:#1e40af;
+  --tag-done-bg:#dcfce7;
+  --tag-done-text:#166534;
 }
-html.dark{
-  --bg:#121212;
-  --text:#e2e2e2;
-  --text-secondary:#aaaaaa;
-  --border:#2a2a2a;
-  --card-bg:#1e1e1e;
-  --hover-bg:#2c2c2c;
-  --primary:#dddddd;
-  --accent:#bbbbbb;
-  --accent-text:#1a1a1a;
-  --shadow:rgba(0,0,0,.45);
-  --danger:#e74c3c;
-  --info:#5dade2;
-  --success:#58d68d;
-  --tag-pending-bg:#2c2c2c;
-  --tag-pending-text:#bbbbbb;
-  --tag-doing-bg:#1a3a52;
-  --tag-doing-text:#aed6f1;
-  --tag-done-bg:#1a3b28;
-  --tag-done-text:#a9dfbf;
+html[data-theme="dark"]{
+  --bg:#111113;
+  --text:#e5e5e7;
+  --text-secondary:#9a9aa0;
+  --border:#26262b;
+  --card:#18181b;
+  --hover:#222226;
+  --header-bg:rgba(17,17,19,.92);
+  --primary:#f4f4f5;
+  --accent:#a1a1aa;
+  --accent-soft:rgba(161,161,170,.14);
+  --shadow:0 4px 14px rgba(0,0,0,.5);
+  --hero-grad:linear-gradient(135deg,#0a0a0b 0%,#18181b 100%);
+  --danger:#f87171;
+  --info:#93c5fd;
+  --success:#4ade80;
+  --tag-pending-bg:#26262b;
+  --tag-pending-text:#a1a1aa;
+  --tag-doing-bg:#1e3a5f;
+  --tag-doing-text:#bfdbfe;
+  --tag-done-bg:#14532d;
+  --tag-done-text:#bbf7d0;
 }
+html[data-theme="dark"] .btn-primary{background:#71717a;}
 body{
-  background-color:var(--bg);
-  color:var(--text);
-  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
-  line-height:1.6;
-  min-height:100vh;
-}
-.container{max-width:860px;margin:0 auto;padding:0 14px;}
-header{
-  padding:16px 0;
-  border-bottom:1px solid var(--border);
-}
-.header-row{display:flex;justify-content:space-between;align-items:center;gap:10px;}
-.site-title{font-size:19px;font-weight:600;}
-.site-sub{font-size:12px;color:var(--text-secondary);margin-top:2px;}
-.header-right{position:relative;}
-.icon-btn{
-  width:38px;height:38px;
-  display:flex;align-items:center;justify-content:center;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:var(--text);
-  border-radius:8px;
-  cursor:pointer;
-}
-.icon-btn:hover{background:var(--hover-bg);}
-.settings-panel{
-  position:absolute;top:calc(100% + 10px);right:0;
-  width:280px;max-width:calc(100vw - 28px);
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:16px;
-  box-shadow:0 8px 28px var(--shadow);
-  display:none;z-index:120;
-}
-.settings-panel.open{display:block;}
-.settings-panel::before{
-  content:'';position:absolute;top:-8px;right:14px;
-  width:14px;height:14px;
-  background:var(--card-bg);
-  border-left:1px solid var(--border);
-  border-top:1px solid var(--border);
-  transform:rotate(45deg);
-}
-.settings-title{font-size:15px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-.settings-group{margin:12px 0;}
-.settings-label{font-size:13px;color:var(--text-secondary);margin-bottom:8px;}
-.seg{display:flex;gap:6px;flex-wrap:wrap;}
-.seg-btn{
-  padding:7px 12px;
-  border:1px solid var(--border);
   background:var(--bg);
   color:var(--text);
-  border-radius:6px;
-  cursor:pointer;
-  font-size:13px;
-  transition:background .15s;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  line-height:1.65;
+  min-height:100vh;
 }
-.seg-btn:hover{background:var(--hover-bg);}
-.seg-btn.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
-nav{margin:14px 0;}
-.nav-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;}
-.nav-item button{
-  padding:9px 14px;
+.container{max-width:960px;margin:0 auto;padding:0 16px;}
+a{color:var(--accent);}
+button{font-family:inherit;}
+
+/* ===== 顶部导航（官网同款） ===== */
+.site-header{
+  position:sticky;top:0;z-index:100;
+  background:var(--header-bg);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+.header-inner{
+  display:flex;align-items:center;gap:18px;
+  min-height:62px;
+  flex-wrap:wrap;
+}
+.logo{
+  font-size:19px;font-weight:700;color:var(--primary);
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+}
+.logo-mark{
+  width:34px;height:34px;border-radius:6px;
+  background:var(--hero-grad);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:800;flex:none;
+}
+.logo-img{
+  width:34px;height:34px;border-radius:6px;
+  object-fit:cover;flex:none;display:block;
   border:1px solid var(--border);
-  background:var(--card-bg);
-  color:var(--text);
-  border-radius:6px;
-  cursor:pointer;
-  font-size:14px;
 }
-.nav-item button:hover{background:var(--hover-bg);}
-.nav-item button.active{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
+html[data-theme="dark"] .logo-img{filter:invert(1);}
+.main-nav{
+  display:flex;gap:2px;flex:1;flex-wrap:wrap;
+}
+.nav-link{
+  padding:8px 12px;border-radius:6px;border:none;background:transparent;
+  color:var(--text);font-size:14px;cursor:pointer;white-space:nowrap;
+}
+.nav-link:hover{background:var(--hover);}
+.nav-link.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+.header-right{
+  display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;
+}
+/* 主题切换开关（官网同款滑块） */
+.theme-toggle{
+  position:relative;width:54px;height:28px;flex:none;
+  border:1px solid var(--border);background:var(--card);
+  border-radius:14px;cursor:pointer;padding:0;overflow:hidden;
+}
+.theme-toggle .tt-ic{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:13px;line-height:1;pointer-events:none;
+}
+.theme-toggle .tt-sun{left:8px;opacity:.75;}
+.theme-toggle .tt-moon{right:8px;opacity:.75;}
+.theme-toggle .tt-thumb{
+  position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:#fff;transition:left .28s cubic-bezier(.4,0,.2,1),background-color .28s;
+}
+html[data-theme="dark"] .theme-toggle .tt-thumb{left:29px;}
+body,.site-header,.card,.fb-card,.admin-item,.admin-bar,.btn,.nav-link,.theme-toggle,.toast{
+  transition:background-color .3s ease,color .3s ease,border-color .3s ease;
+}
+
+/* ===== 通用 ===== */
+.section{padding:22px 0 8px;}
+.section-title{
+  display:flex;align-items:center;gap:10px;
+  font-size:19px;font-weight:700;margin-bottom:14px;color:var(--primary);
+}
+.section-title::before{
+  content:'';width:5px;height:20px;border-radius:0;background:var(--accent);
+}
 .view{display:none;}
-.view.active{display:block;}
+.view.active{display:block;animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 .card{
-  padding:16px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:10px;
-  margin:12px 0;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:18px;box-shadow:var(--shadow);margin:12px 0;
 }
-.card h2{font-size:17px;margin-bottom:12px;}
-.banner{
-  padding:10px 14px;
-  border:1px solid var(--border);
-  border-radius:8px;
-  background:var(--card-bg);
-  font-size:13px;
-  color:var(--text-secondary);
-  margin:10px 0;
+.card h2{font-size:16px;margin-bottom:10px;}
+.btn{
+  padding:8px 14px;border-radius:6px;border:1px solid var(--border);
+  background:var(--card);color:var(--text);cursor:pointer;font-size:14px;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;min-height:38px;
 }
-.banner.warn{border-color:#e6b800;color:#8a6d00;}
-html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
+.btn:hover{background:var(--hover);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
+.btn.primary:hover{filter:brightness(1.06);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+
+/* ===== 表单 ===== */
 .form-item{margin:12px 0;}
-.form-label{display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;}
+.form-label{display:block;font-size:13px;color:var(--text-secondary);margin-bottom:5px;}
 .form-label .req{color:var(--danger);}
 .form-item input[type="text"],
 .form-item input[type="password"],
 .form-item textarea,
 .form-item select{
-  width:100%;
-  padding:10px 12px;
-  border:1px solid var(--border);
-  border-radius:6px;
-  background:var(--bg);
-  color:var(--text);
-  font-size:14px;
-  font-family:inherit;
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;
+  background:var(--card);color:var(--text);font-size:14px;outline:none;font-family:inherit;
+}
+.form-item input:focus,.form-item textarea:focus,.form-item select:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
 }
 .form-item textarea{min-height:110px;resize:vertical;}
-.form-item input:focus,
-.form-item textarea:focus,
-.form-item select:focus{
-  outline:2px solid var(--accent);
-  outline-offset:1px;
+.tip-msg{
+  min-height:20px;font-size:13px;margin:6px 0;color:var(--text-secondary);
 }
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:9px 16px;
-  border:1px solid var(--border);
-  background:var(--card-bg);
-  color:var(--text);
-  border-radius:6px;
-  cursor:pointer;
-  font-size:14px;
-  font-family:inherit;
-  min-height:44px;
-}
-.btn:hover{background:var(--hover-bg);}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text);font-weight:600;}
-.btn.primary:hover{filter:brightness(1.08);}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
-.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
-/* 反馈列表 */
-.list-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;}
+.tip-msg.error{color:var(--danger);}
+.tip-msg.ok{color:var(--success);}
+
+/* ===== 列表 ===== */
+.list-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px;}
 .list-toolbar input[type="text"]{
-  flex:1;min-width:150px;
-  padding:9px 12px;
-  border:1px solid var(--border);
-  border-radius:6px;
-  background:var(--card-bg);
-  color:var(--text);
-  font-size:14px;
+  flex:1;min-width:150px;padding:9px 12px;border:1px solid var(--border);border-radius:6px;
+  background:var(--card);color:var(--text);font-size:14px;outline:none;
 }
+.list-toolbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
 .list-toolbar select{
-  padding:9px 10px;
-  border:1px solid var(--border);
-  border-radius:6px;
-  background:var(--card-bg);
-  color:var(--text);
-  font-size:14px;
-  font-family:inherit;
+  padding:8px 10px;border:1px solid var(--border);border-radius:6px;
+  background:var(--card);color:var(--text);font-size:14px;font-family:inherit;outline:none;
 }
 .fb-card{
   padding:14px 16px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:10px;
-  margin:10px 0;
-  cursor:pointer;
-  transition:border-color .15s;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  margin:10px 0;cursor:pointer;box-shadow:var(--shadow);
+  transition:border-color .15s ease;
 }
 .fb-card:hover{border-color:var(--accent);}
 .fb-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
-.fb-no{font-weight:600;font-size:14px;font-family:ui-monospace,Consolas,monospace;}
+.fb-no{font-weight:700;font-size:14px;font-family:ui-monospace,Consolas,monospace;color:var(--primary);}
 .fb-type{font-size:12px;color:var(--text-secondary);}
-.fb-status{
-  font-size:12px;padding:2px 10px;border-radius:999px;
-  font-weight:500;
-}
+.fb-status{font-size:12px;padding:2px 10px;border-radius:999px;font-weight:600;}
 .fb-status.pending{background:var(--tag-pending-bg);color:var(--tag-pending-text);}
 .fb-status.doing{background:var(--tag-doing-bg);color:var(--tag-doing-text);}
 .fb-status.done{background:var(--tag-done-bg);color:var(--tag-done-text);}
 .fb-time{font-size:12px;color:var(--text-secondary);margin-left:auto;}
 .fb-desc{
-  font-size:14px;
+  font-size:14px;color:var(--text);
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 .fb-thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
@@ -245,7 +222,8 @@ html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
   border-radius:6px;border:1px solid var(--border);
 }
 .empty{padding:34px 16px;text-align:center;color:var(--text-secondary);font-size:14px;}
-/* 详情 */
+
+/* ===== 详情 ===== */
 .detail-meta{margin:10px 0;}
 .detail-meta .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0;font-size:14px;}
 .detail-meta .row .k{color:var(--text-secondary);flex:none;}
@@ -272,51 +250,36 @@ html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
 }
 .lightbox.open{display:flex;}
 .lightbox img{max-width:100%;max-height:100%;border-radius:6px;}
-.reply-box{
-  margin:14px 0;
-  padding:14px;
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:8px;
-}
+.reply-box{margin:12px 0;}
 .reply-box .k{font-size:13px;color:var(--text-secondary);margin-bottom:6px;}
 .reply-text{font-size:14px;white-space:pre-wrap;word-break:break-word;}
-.reply-empty{font-size:13px;color:var(--text-secondary);font-style:normal;}
-/* 管理 */
+.reply-empty{font-size:13px;color:var(--text-secondary);}
+
+/* ===== 管理 ===== */
 .admin-bar{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   padding:10px 14px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:8px;
-  margin:12px 0;
+  background:var(--card);border:1px solid var(--border);border-radius:8px;
+  box-shadow:var(--shadow);margin:12px 0;
 }
 .admin-bar .who{font-size:13px;color:var(--text-secondary);}
 .admin-item{
-  padding:14px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:10px;
-  margin:10px 0;
+  padding:14px 16px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow);margin:10px 0;
 }
 .admin-item .fb-head{margin-bottom:8px;}
 .admin-item textarea{
   width:100%;min-height:70px;
-  padding:9px 11px;
-  border:1px solid var(--border);
-  border-radius:6px;
-  background:var(--bg);
-  color:var(--text);
-  font-size:14px;
-  font-family:inherit;
-  resize:vertical;
-  margin:8px 0;
+  padding:9px 11px;border:1px solid var(--border);border-radius:6px;
+  background:var(--bg);color:var(--text);font-size:14px;font-family:inherit;
+  resize:vertical;margin:8px 0;outline:none;
 }
-.admin-item .save-btn{min-height:38px;padding:6px 14px;}
-/* 图片上传 */
-.img-upload{
-  display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;
-}
+.admin-item textarea:focus{border-color:var(--accent);}
+.admin-item .save-btn{min-height:36px;padding:6px 14px;}
+
+/* ===== 图片上传 ===== */
+.img-upload{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
 .img-cell{position:relative;}
 .img-cell img{
   width:90px;height:90px;object-fit:cover;
@@ -328,7 +291,7 @@ html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
   width:22px;height:22px;
   border-radius:50%;
   border:1px solid var(--border);
-  background:var(--bg);
+  background:var(--card);
   color:var(--text);
   font-size:13px;line-height:1;
   cursor:pointer;
@@ -344,44 +307,54 @@ html.dark .banner.warn{color:#e6c95c;border-color:#7a6a1f;}
   display:flex;align-items:center;justify-content:center;
   font-size:24px;
 }
-.img-add:hover{background:var(--hover-bg);color:var(--text);}
-.tip-msg{
-  min-height:20px;
-  font-size:13px;
-  margin:6px 0;
-  color:var(--text-secondary);
-}
-.tip-msg.error{color:var(--danger);}
-.tip-msg.ok{color:var(--success);}
+.img-add:hover{background:var(--hover);color:var(--text);}
+
+/* ===== Toast / 页脚 ===== */
 .toast{
-  position:fixed;left:50%;bottom:28px;
+  position:fixed;left:50%;bottom:34px;
   transform:translateX(-50%);
-  background:var(--primary);
-  color:var(--bg);
-  padding:10px 20px;
-  border-radius:8px;
-  font-size:14px;
-  box-shadow:0 6px 20px var(--shadow);
-  opacity:0;
-  transition:opacity .25s;
-  z-index:300;
-  pointer-events:none;
+  background:var(--primary);color:var(--bg);
+  padding:9px 18px;border-radius:6px;
+  font-size:14px;box-shadow:var(--shadow);
+  opacity:0;transition:opacity .25s;
+  z-index:300;pointer-events:none;
   max-width:calc(100vw - 40px);
   text-align:center;
 }
 .toast.show{opacity:1;}
-footer{
-  margin-top:34px;
-  padding:16px 0;
-  border-top:1px solid var(--border);
-  text-align:center;
-  color:var(--text-secondary);
-  font-size:13px;
+.site-footer{
+  margin-top:40px;padding:30px 0 18px;border-top:1px solid var(--border);
+  background:var(--card);
 }
-@media(max-width:600px){
-  .nav-list{gap:6px;}
-  .nav-item button{padding:8px 11px;font-size:13px;}
-  .settings-panel{width:260px;}
+.footer-grid{
+  display:grid;grid-template-columns:1.4fr 1fr 1.2fr;gap:26px;
+  padding-bottom:20px;border-bottom:1px solid var(--border);
+}
+.footer-col h4{
+  font-size:14px;font-weight:700;margin-bottom:10px;color:var(--primary);
+}
+.footer-col p{
+  font-size:13px;color:var(--text-secondary);line-height:1.7;
+}
+.footer-links{list-style:none;font-size:13px;color:var(--text-secondary);line-height:2;}
+.footer-links button{
+  border:none;background:none;color:var(--text-secondary);cursor:pointer;padding:0;font-size:13px;
+}
+.footer-links button:hover{color:var(--accent);}
+.footer-links a{color:var(--accent);text-decoration:none;}
+.footer-links a:hover{text-decoration:underline;}
+.footer-bottom{
+  padding-top:14px;text-align:center;color:var(--text-secondary);font-size:12px;
+}
+@media(max-width:720px){
+  .footer-grid{grid-template-columns:1fr;gap:16px;}
+}
+
+@media(max-width:720px){
+  .header-inner{gap:10px;}
+  .main-nav{order:3;flex-basis:100%;}
+  .logo{font-size:17px;}
+  .card{padding:14px;}
 }
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important;}
@@ -389,58 +362,84 @@ footer{
 </style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div class="header-row">
-      <div>
-        <div class="site-title" data-i18n="siteTitle">The Slow Tide · 反馈中心</div>
-      </div>
-      <div class="header-right">
-        <button class="icon-btn" id="settingsBtn" aria-label="Settings">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-        <div class="settings-panel" id="settingsPanel">
-          <div class="settings-title" data-i18n="settingsTitle">设置</div>
-          <div class="settings-group">
-            <div class="settings-label" data-i18n="themeSection">主题模式</div>
-            <div class="seg">
-              <button class="seg-btn" data-theme="system" data-i18n="themeSystem">跟随系统</button>
-              <button class="seg-btn" data-theme="light" data-i18n="themeLight">浅色</button>
-              <button class="seg-btn" data-theme="dark" data-i18n="themeDark">深色</button>
-            </div>
-          </div>
-          <div class="settings-group">
-            <div class="settings-label" data-i18n="langSection">语言</div>
-            <div class="seg">
-              <button class="seg-btn" data-lang="zhCN" data-i18n="langZhCN">简体中文</button>
-              <button class="seg-btn" data-lang="zhTW" data-i18n="langZhTW">繁體中文</button>
-              <button class="seg-btn" data-lang="en" data-i18n="langEn">English</button>
-            </div>
-          </div>
+<header class="site-header">
+  <div class="container header-inner">
+    <div class="logo"><img src="data:image/png;base64,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" alt="TST" class="logo-img"> <span data-i18n="siteTitle">The Slow Tide · 反馈中心</span></div>
+    <nav class="main-nav" id="mainNav">
+      <button class="nav-link active" data-route="submit" data-i18n="navSubmit">提交反馈</button>
+      <button class="nav-link" data-route="list" data-i18n="navList">反馈列表</button>
+      <button class="nav-link" data-route="admin" data-i18n="navAdmin">管理入口</button>
+    </nav>
+    <div class="header-right">
+      <button class="theme-toggle" id="themeToggle" title="切换深色/浅色" aria-label="切换主题">
+        <span class="tt-ic tt-sun">☀</span>
+        <span class="tt-ic tt-moon">☾</span>
+        <span class="tt-thumb" id="themeThumb"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 提交 -->
+  <section id="view-submit" class="view active">
+    <div class="container">
+      <div class="section"><div class="section-title" data-i18n="submitTitle">提交反馈</div></div>
+      <div class="card">
+        <div class="form-item">
+          <label class="form-label" for="f-gameid"><span class="req">*</span> <span data-i18n="fGameId">游戏ID</span></label>
+          <input type="text" id="f-gameid" maxlength="32" autocomplete="off">
+        </div>
+        <div class="form-item">
+          <label class="form-label" for="f-type"><span class="req">*</span> <span data-i18n="fType">反馈类型</span></label>
+          <select id="f-type">
+            <option value="bug" data-i18n="typeBug">BUG问题</option>
+            <option value="cheat" data-i18n="typeCheat">外挂作弊</option>
+            <option value="destroy" data-i18n="typeDestroy">恶意破坏</option>
+            <option value="suggest" data-i18n="typeSuggest">玩法建议</option>
+            <option value="appeal" data-i18n="typeAppeal">处罚申诉</option>
+            <option value="other" data-i18n="typeOther">其他</option>
+          </select>
+        </div>
+        <div class="form-item">
+          <label class="form-label" for="f-desc"><span class="req">*</span> <span data-i18n="fDesc">问题描述</span></label>
+          <textarea id="f-desc" maxlength="2000"></textarea>
+        </div>
+        <div class="form-item">
+          <label class="form-label" for="f-time" data-i18n="fTime">发生时间</label>
+          <input type="text" id="f-time" maxlength="40" autocomplete="off" placeholder="例如：2026-09-05 20:00">
+        </div>
+        <div class="form-item">
+          <label class="form-label" for="f-contact" data-i18n="fContact">联系方式</label>
+          <input type="text" id="f-contact" maxlength="32" autocomplete="off">
+        </div>
+        <div class="form-item">
+          <label class="form-label" data-i18n="fImages">上传截图</label>
+          <div class="img-upload" id="imgList"></div>
+          <input type="file" id="f-files" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
+        </div>
+        <div class="tip-msg" id="submitTip"></div>
+        <div class="btn-row">
+          <button class="btn primary" id="submitBtn" data-i18n="fSubmit">提交反馈</button>
         </div>
       </div>
     </div>
-  </header>
+  </section>
 
-  <nav>
-    <ul class="nav-list">
-      <li class="nav-item"><button data-route="submit" data-i18n="navSubmit">提交反馈</button></li>
-      <li class="nav-item"><button data-route="list" data-i18n="navList">反馈列表</button></li>
-      <li class="nav-item"><button data-route="admin" data-i18n="navAdmin">管理入口</button></li>
-    </ul>
-  </nav>
-
-  <!-- ============ 视图：提交 ============ -->
-  <section id="view-submit" class="view">
-    <div class="card">
-      <h2 data-i18n="submitTitle">提交反馈</h2>
-      <div class="form-item">
-        <label class="form-label" for="f-gameid"><span class="req">*</span> <span data-i18n="fGameId">游戏ID</span></label>
-        <input type="text" id="f-gameid" maxlength="32" autocomplete="off">
-      </div>
-      <div class="form-item">
-        <label class="form-label" for="f-type"><span class="req">*</span> <span data-i18n="fType">反馈类型</span></label>
-        <select id="f-type">
+  <!-- 列表 -->
+  <section id="view-list" class="view">
+    <div class="container">
+      <div class="section"><div class="section-title" data-i18n="navList">反馈列表</div></div>
+      <div class="list-toolbar">
+        <input type="text" id="listSearch" data-i18n-ph="searchPh" placeholder="搜索游戏ID或反馈编号…">
+        <select id="filterStatus">
+          <option value="" data-i18n="allStatus">全部状态</option>
+          <option value="pending" data-i18n="statusPending">待处理</option>
+          <option value="doing" data-i18n="statusDoing">处理中</option>
+          <option value="done" data-i18n="statusDone">已解决</option>
+        </select>
+        <select id="filterType">
+          <option value="" data-i18n="allType">全部类型</option>
           <option value="bug" data-i18n="typeBug">BUG问题</option>
           <option value="cheat" data-i18n="typeCheat">外挂作弊</option>
           <option value="destroy" data-i18n="typeDestroy">恶意破坏</option>
@@ -449,87 +448,76 @@ footer{
           <option value="other" data-i18n="typeOther">其他</option>
         </select>
       </div>
-      <div class="form-item">
-        <label class="form-label" for="f-desc"><span class="req">*</span> <span data-i18n="fDesc">问题描述</span></label>
-        <textarea id="f-desc" maxlength="2000"></textarea>
-      </div>
-      <div class="form-item">
-        <label class="form-label" for="f-time" data-i18n="fTime">发生时间</label>
-        <input type="text" id="f-time" maxlength="40" autocomplete="off" placeholder="例如：2026-09-05 20:00">
-      </div>
-      <div class="form-item">
-        <label class="form-label" for="f-contact" data-i18n="fContact">联系方式</label>
-        <input type="text" id="f-contact" maxlength="32" autocomplete="off">
-      </div>
-      <div class="form-item">
-        <label class="form-label" data-i18n="fImages">上传截图</label>
-        <div class="img-upload" id="imgList"></div>
-        <input type="file" id="f-files" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
-      </div>
-      <div class="tip-msg" id="submitTip"></div>
-      <div class="btn-row">
-        <button class="btn primary" id="submitBtn" data-i18n="fSubmit">提交反馈</button>
-      </div>
+      <div id="listWrap"></div>
     </div>
   </section>
 
-  <!-- ============ 视图：列表 ============ -->
-  <section id="view-list" class="view">
-    <div class="list-toolbar">
-      <input type="text" id="listSearch" data-i18n-ph="searchPh" placeholder="搜索游戏ID或反馈编号…">
-      <select id="filterStatus">
-        <option value="" data-i18n="allStatus">全部状态</option>
-        <option value="pending" data-i18n="statusPending">待处理</option>
-        <option value="doing" data-i18n="statusDoing">处理中</option>
-        <option value="done" data-i18n="statusDone">已解决</option>
-      </select>
-      <select id="filterType">
-        <option value="" data-i18n="allType">全部类型</option>
-        <option value="bug" data-i18n="typeBug">BUG问题</option>
-        <option value="cheat" data-i18n="typeCheat">外挂作弊</option>
-        <option value="destroy" data-i18n="typeDestroy">恶意破坏</option>
-        <option value="suggest" data-i18n="typeSuggest">玩法建议</option>
-        <option value="appeal" data-i18n="typeAppeal">处罚申诉</option>
-        <option value="other" data-i18n="typeOther">其他</option>
-      </select>
-    </div>
-    <div id="listWrap"></div>
-  </section>
-
-  <!-- ============ 视图：详情 ============ -->
+  <!-- 详情 -->
   <section id="view-detail" class="view">
-    <button class="btn" id="detailBack" data-i18n="back">返回</button>
-    <div id="detailWrap"></div>
+    <div class="container">
+      <div class="section"><button class="btn" id="detailBack" data-i18n="back">返回</button></div>
+      <div id="detailWrap"></div>
+    </div>
   </section>
 
-  <!-- ============ 视图：管理 ============ -->
+  <!-- 管理 -->
   <section id="view-admin" class="view">
-    <div id="adminLogin">
-      <div class="card">
-        <h2 data-i18n="adminTitle">管理入口</h2>
-        <div class="form-item">
-          <label class="form-label" for="adminPwd" data-i18n="adminPwd">管理员口令</label>
-          <input type="password" id="adminPwd" maxlength="32">
-        </div>
-        <div class="tip-msg" id="adminTip"></div>
-        <div class="btn-row">
-          <button class="btn primary" id="adminLoginBtn" data-i18n="adminLogin">登录</button>
+    <div class="container">
+      <div class="section"><div class="section-title" data-i18n="adminTitle">管理入口</div></div>
+      <div id="adminLogin">
+        <div class="card">
+          <div class="form-item">
+            <label class="form-label" for="adminPwd" data-i18n="adminPwd">管理员口令</label>
+            <input type="password" id="adminPwd" maxlength="32">
+          </div>
+          <div class="tip-msg" id="adminTip"></div>
+          <div class="btn-row">
+            <button class="btn primary" id="adminLoginBtn" data-i18n="adminLogin">登录</button>
+          </div>
         </div>
       </div>
-    </div>
-    <div id="adminPanel" style="display:none;">
-      <div class="admin-bar">
-        <span class="who" id="adminWho"></span>
-        <button class="btn" id="adminLogout" style="min-height:34px;padding:6px 12px;" data-i18n="adminLogout">退出管理</button>
+      <div id="adminPanel" style="display:none;">
+        <div class="admin-bar">
+          <span class="who" id="adminWho"></span>
+          <button class="btn" id="adminLogout" style="min-height:32px;padding:5px 12px;" data-i18n="adminLogout">退出管理</button>
+        </div>
+        <div id="adminList"></div>
       </div>
-      <div id="adminList"></div>
     </div>
   </section>
+</main>
 
-  <footer>
-    <p data-i18n="footer">© 2026 The Slow Tide · TST 服务器</p>
-  </footer>
-</div>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>The Slow Tide</h4>
+        <p>网易基岩 TST 山头 · 社区向 Minecraft 生存服务器。友善交流，共建世界。</p>
+      </div>
+      <div class="footer-col">
+        <h4>快捷导航</h4>
+        <ul class="footer-links">
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">首页</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">公告</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">动态</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">赛事活动</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">兑换码</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">服务器赞助</a></li>
+          <li><a href="https://severuszx.github.io/TST/" target="_blank" rel="noopener">玩家公约</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>联系我们</h4>
+        <ul class="footer-links">
+          <li>QQ交流群：833470853</li>
+          <li>服务器：mc.163.com/open/mc_realms/?realms=270239C36AD</li>
+          <li><a href="https://theslowtidefk.pages.dev/" target="_blank" rel="noopener">问题反馈</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 The Slow Tide</div>
+  </div>
+</footer>
 
 <div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
 <div class="toast" id="toast"></div>
@@ -538,12 +526,7 @@ footer{
 (function(){
 'use strict';
 /* ================================================================
- * 云服务配置（部署后填写，即可开启多人共享数据）
- * 在 leancloud.cn 注册并创建"开发版"应用后，把下面三项填上：
- *   server : 应用设置里的 API 域名（形如 https://xxxx.api.lncldapi.com）
- *   appId  : 应用凭证 AppID
- *   appKey : 应用凭证 AppKey
- * 三项留空时自动降级为"本地模式"（数据只存在当前浏览器）。
+ * 云服务配置（Cloudflare Pages Functions + D1 数据库）
  * ================================================================ */
 var SUPABASE = {
   url: '/api',
@@ -556,15 +539,6 @@ var SUPABASE = {
 var I18N = {
   zhCN: {
     siteTitle:'The Slow Tide · 反馈中心',
-    settingsTitle:'设置',
-    themeSection:'主题模式',
-    langSection:'语言',
-    themeSystem:'跟随系统',
-    themeLight:'浅色',
-    themeDark:'深色',
-    langZhCN:'简体中文',
-    langZhTW:'繁體中文',
-    langEn:'English',
     navSubmit:'提交反馈',
     navList:'反馈列表',
     navAdmin:'管理入口',
@@ -623,157 +597,15 @@ var I18N = {
     imgTooBig:'图片超过5MB，请压缩后重试',
     imgBadType:'仅支持 JPG/PNG/WebP 格式',
     imgProcFail:'图片处理失败',
-    footer:'© 2026 The Slow Tide · TST 服务器'
+    footer:'© 2026 The Slow Tide'
   },
-  zhTW: {
-    siteTitle:'The Slow Tide · 回饋中心',
-    settingsTitle:'設定',
-    themeSection:'主題模式',
-    langSection:'語言',
-    themeSystem:'跟隨系統',
-    themeLight:'淺色',
-    themeDark:'深色',
-    langZhCN:'简体中文',
-    langZhTW:'繁體中文',
-    langEn:'English',
-    navSubmit:'提交回饋',
-    navList:'回饋列表',
-    navAdmin:'管理入口',
-    submitTitle:'提交回饋',
-    fGameId:'遊戲ID',
-    fType:'回饋類型',
-    fDesc:'問題描述',
-    fTime:'發生時間',
-    fContact:'聯絡方式',
-    fImages:'上傳截圖',
-    fSubmit:'提交回饋',
-    typeBug:'BUG問題',
-    typeCheat:'外掛作弊',
-    typeDestroy:'惡意破壞',
-    typeSuggest:'玩法建議',
-    typeAppeal:'處罰申訴',
-    typeOther:'其他',
-    allStatus:'全部狀態',
-    allType:'全部類型',
-    statusPending:'待處理',
-    statusDoing:'處理中',
-    statusDone:'已解決',
-    searchPh:'搜尋遊戲ID或回饋編號…',
-    listEmpty:'暫無回饋',
-    back:'返回',
-    detailNo:'回饋編號',
-    detailGameId:'遊戲ID',
-    detailType:'類型',
-    detailTime:'提交時間',
-    detailContact:'聯絡方式',
-    detailStatus:'狀態',
-    detailImages:'截圖',
-    detailReply:'管理組回覆',
-    detailNoReply:'暫無回覆',
-    adminTitle:'管理入口',
-    adminPwd:'管理員口令',
-    adminLogin:'登入',
-    adminLogout:'退出管理',
-    adminWho:'管理視圖',
-    adminWrong:'口令錯誤',
-    adminEmpty:'暫無可處理的回饋。',
-    adminReplyPh:'填寫處理回覆…',
-    adminSave:'儲存',
-    adminSaved:'已儲存',
-    adminDelete:'刪除',
-    adminDeleteConfirm:'確定刪除這條回饋嗎？刪除後不可恢復。',
-    adminDeleted:'已刪除',
-    errFill:'請填寫遊戲ID與問題描述',
-    errNoName:'請填寫遊戲ID',
-    errNoDesc:'請填寫問題描述',
-    errSubmitFail:'提交失敗，請重試',
-    errCloud:'雲服務請求失敗，請檢查配置或網路',
-    errLocal:'本地儲存失敗，可能是空間不足',
-    submitOk:'提交成功！回饋編號：',
-    imgTooMany:'最多上傳3張圖片',
-    imgTooBig:'圖片超過5MB，請壓縮後重試',
-    imgBadType:'僅支援 JPG/PNG/WebP 格式',
-    imgProcFail:'圖片處理失敗',
-    footer:'© 2026 The Slow Tide · TST 伺服器'
-  },
-  en: {
-    siteTitle:'The Slow Tide · Feedback Hub',
-    settingsTitle:'Settings',
-    themeSection:'Theme',
-    langSection:'Language',
-    themeSystem:'Follow System',
-    themeLight:'Light',
-    themeDark:'Dark',
-    langZhCN:'简体中文',
-    langZhTW:'繁體中文',
-    langEn:'English',
-    navSubmit:'Submit',
-    navList:'Feedback List',
-    navAdmin:'Admin',
-    submitTitle:'Submit Feedback',
-    fGameId:'Game ID',
-    fType:'Feedback Type',
-    fDesc:'Description',
-    fTime:'Time of occurrence',
-    fContact:'Contact',
-    fImages:'Screenshots',
-    fSubmit:'Submit',
-    typeBug:'Bug Report',
-    typeCheat:'Cheating',
-    typeDestroy:'Malicious Damage',
-    typeSuggest:'Suggestion',
-    typeAppeal:'Appeal',
-    typeOther:'Other',
-    allStatus:'All Statuses',
-    allType:'All Types',
-    statusPending:'Pending',
-    statusDoing:'In Progress',
-    statusDone:'Resolved',
-    searchPh:'Search game ID or feedback no…',
-    listEmpty:'No feedback yet.',
-    back:'Back',
-    detailNo:'Feedback No.',
-    detailGameId:'Game ID',
-    detailType:'Type',
-    detailTime:'Submitted',
-    detailContact:'Contact',
-    detailStatus:'Status',
-    detailImages:'Screenshots',
-    detailReply:'Admin Reply',
-    detailNoReply:'No reply yet.',
-    adminTitle:'Admin',
-    adminPwd:'Admin Password',
-    adminLogin:'Sign In',
-    adminLogout:'Sign Out',
-    adminWho:'Admin mode.',
-    adminWrong:'Wrong password',
-    adminEmpty:'No feedback to handle.',
-    adminReplyPh:'Write a reply…',
-    adminSave:'Save',
-    adminSaved:'Saved',
-    adminDelete:'Delete',
-    adminDeleteConfirm:'Delete this feedback? This cannot be undone.',
-    adminDeleted:'Deleted',
-    errFill:'Please fill in game ID and description',
-    errNoName:'Please fill in your game ID',
-    errNoDesc:'Please describe the problem',
-    errSubmitFail:'Submit failed, please retry',
-    errCloud:'Cloud request failed. Check config or network',
-    errLocal:'Local storage failed, possibly out of space',
-    submitOk:'Submitted! Feedback No.: ',
-    imgTooMany:'Maximum 3 images',
-    imgTooBig:'Image exceeds 5MB, please compress and retry',
-    imgBadType:'Only JPG/PNG/WebP are supported',
-    imgProcFail:'Image processing failed',
-    footer:'© 2026 The Slow Tide · TST Server'
-  }
 };
 
 /* ================================================================
  * 状态
  * ================================================================ */
 var root = document.documentElement;
-var lang = localStorage.getItem('tstfb-lang') || 'zhCN';
+var lang = 'zhCN';
 var ADMIN_PWD = 'WYJQQNLDYWHM';
 var MAX_IMAGES = 3;
 var MAX_IMG_BYTES = 5 * 1024 * 1024;
@@ -816,19 +648,18 @@ function showToast(msg){
 }
 
 /* ================================================================
- * 主题 / 语言
+ * 主题 / 语言（官网同款：data-theme + 滑块）
  * ================================================================ */
-function themeState(){ return localStorage.getItem('tstfb-theme') || 'system'; }
+function themeState(){
+  var m = null;
+  try { m = localStorage.getItem('tstfb-theme'); } catch (e) {}
+  return (m === 'dark' || m === 'light') ? m : 'light';
+}
 function applyTheme(){
-  var mode = themeState();
-  var dark;
-  if (mode === 'system') { dark = window.matchMedia('(prefers-color-scheme: dark)').matches; }
-  else { dark = (mode === 'dark'); }
-  root.classList.toggle('dark', dark);
-  syncSettingsUI();
+  root.setAttribute('data-theme', themeState());
 }
 function applyLang(){
-  document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'zhTW' ? 'zh-Hant' : 'zh-CN');
+  document.documentElement.lang = 'zh-CN';
   document.querySelectorAll('[data-i18n]').forEach(function(el){
     var k = el.getAttribute('data-i18n');
     if (I18N[lang][k] != null) { el.textContent = I18N[lang][k]; }
@@ -837,50 +668,18 @@ function applyLang(){
     var k = el.getAttribute('data-i18n-ph');
     if (I18N[lang][k] != null) { el.setAttribute('placeholder', I18N[lang][k]); }
   });
-  syncSettingsUI();
+  document.querySelectorAll('[data-i18n-value]').forEach(function(el){
+    var k = el.getAttribute('data-i18n-value');
+    if (I18N[lang][k] != null) { el.value = I18N[lang][k]; }
+  });
   if (currentRoute === 'list') { renderList(); }
   if (currentRoute === 'detail' && detailId) { renderDetail(detailId); }
   if (currentRoute === 'admin' && isAdmin) { renderAdminList(); }
   updateNav();
 }
-function syncSettingsUI(){
-  var mode = themeState();
-  document.querySelectorAll('.seg-btn[data-theme]').forEach(function(b){
-    b.classList.toggle('active', b.dataset.theme === mode);
-  });
-  document.querySelectorAll('.seg-btn[data-lang]').forEach(function(b){
-    b.classList.toggle('active', b.dataset.lang === lang);
-  });
-}
-/* ================================================================
- * 设置面板
- * ================================================================ */
-var settingsBtn = document.getElementById('settingsBtn');
-var settingsPanel = document.getElementById('settingsPanel');
-settingsBtn.addEventListener('click', function(e){
-  e.stopPropagation();
-  settingsPanel.classList.toggle('open');
-});
-document.addEventListener('click', function(e){
-  if (!e.target.closest('.settings-panel') && !e.target.closest('#settingsBtn')) {
-    settingsPanel.classList.remove('open');
-  }
-});
-document.querySelectorAll('.seg-btn[data-theme]').forEach(function(b){
-  b.addEventListener('click', function(){
-    localStorage.setItem('tstfb-theme', b.dataset.theme);
-    applyTheme();
-  });
-});
-document.querySelectorAll('.seg-btn[data-lang]').forEach(function(b){
-  b.addEventListener('click', function(){
-    lang = b.dataset.lang;
-    localStorage.setItem('tstfb-lang', lang);
-    applyLang();
-  });
-});
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
-  if (themeState() === 'system') { applyTheme(); }
+document.getElementById('themeToggle').addEventListener('click', function(){
+  try { localStorage.setItem('tstfb-theme', themeState() === 'dark' ? 'light' : 'dark'); } catch (e) {}
+  applyTheme();
 });
 
 /* ================================================================
@@ -897,7 +696,7 @@ var routeViews = {
   detail: document.getElementById('view-detail'),
   admin: document.getElementById('view-admin')
 };
-var navBtns = document.querySelectorAll('.nav-item button');
+var navBtns = document.querySelectorAll('.nav-link[data-route]');
 function updateNav(){
   navBtns.forEach(function(b){
     b.classList.toggle('active', b.dataset.route === currentRoute);
@@ -936,7 +735,7 @@ navBtns.forEach(function(b){
 });
 
 /* ================================================================
- * 数据层：LeanCloud REST（云模式） + localStorage（本地模式）
+ * 数据层：Cloudflare Pages Functions + D1（云模式） + localStorage（本地模式）
  * ================================================================ */
 function isCloud(){ return !!(SUPABASE.url && SUPABASE.anonKey); }
 
@@ -973,7 +772,7 @@ function cloudPost(path, body, headers){
     return r.json();
   });
 }
-/* 调用 Supabase RPC 函数 admin_action（云端校验口令，口令不暴露在前端） */
+/* 调用后端 RPC（口令在后端校验，不暴露在前端） */
 function callFunction(name, params){
   var action = name.replace('admin','').toLowerCase();
   var body = { p_action: action, p_password: params.password };
@@ -1083,7 +882,7 @@ function updateOne(id, patch){
 }
 function localList(){
   try {
-    var raw = localStorage.getItem('tstfb_local');
+    var raw = null; try { raw = localStorage.getItem('tstfb_local'); } catch (e) {}
     return raw ? JSON.parse(raw) : [];
   } catch (e) { return []; }
 }
@@ -1223,7 +1022,7 @@ document.getElementById('submitBtn').addEventListener('click', function(){
   tip.textContent = '';
   tip.className = 'tip-msg';
   var no = genNo();
-  var uploads = pickedImages.map(function(img){ return uploadImage(img.dataUrl); });
+  var uploads = pickedImages.map(function(img){ return uploadImage(img); });
   Promise.all(uploads).then(function(urls){
     var obj = {
       no: no,
@@ -1402,7 +1201,6 @@ document.getElementById('lightbox').addEventListener('click', function(){
 document.addEventListener('keydown', function(e){
   if (e.key === 'Escape') {
     document.getElementById('lightbox').classList.remove('open');
-    settingsPanel.classList.remove('open');
   }
 });
 
@@ -1486,7 +1284,7 @@ function renderAdminList(){
       selLabel.style.cssText = 'font-size:13px;color:var(--text-secondary);';
       selLabel.textContent = t('detailStatus') + ': ';
       var sel = document.createElement('select');
-      sel.style.cssText = 'padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:14px;';
+      sel.style.cssText = 'padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px;';
       [['pending', t('statusPending')], ['doing', t('statusDoing')], ['done', t('statusDone')]].forEach(function(p){
         var op = document.createElement('option');
         op.value = p[0];
@@ -1523,7 +1321,7 @@ function renderAdminList(){
       var del = document.createElement('button');
       del.className = 'btn save-btn';
       del.textContent = t('adminDelete');
-      del.style.cssText = 'min-height:38px;padding:6px 14px;color:var(--danger);border-color:var(--danger);';
+      del.style.cssText = 'min-height:36px;padding:6px 14px;color:var(--danger);border-color:var(--danger);';
       del.addEventListener('click', function(){
         if (!window.confirm(t('adminDeleteConfirm'))) { return; }
         del.disabled = true;
