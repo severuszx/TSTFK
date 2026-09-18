@@ -2,7 +2,7 @@
 // 使用 D1 数据库，图片以 base64 存在数据库里，无需对象存储
 // 绑定要求：D1 数据库变量名 DB
 
-const ADMIN_PASSWORD = 'WYJQQNLDYWHM';
+const ADMIN_PASSWORD = 'WYJQQNDYWHM';
 
 export async function onRequest(context) {
   const { request, env } = context;
