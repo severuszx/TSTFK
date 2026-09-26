@@ -1347,7 +1347,7 @@ function renderAdminList(){
       btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;';
       var view = document.createElement('button');
       view.className = 'btn save-btn';
-      view.textContent = t('detailTitle') || '鏌ョ湅瀹屾暣鎶曠';
+      view.textContent = '查看完整投稿';
       view.addEventListener('click', function(){
         location.hash = '#/detail?id=' + encodeURIComponent(it.id);
       });
