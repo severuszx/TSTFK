@@ -419,6 +419,13 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
           <div class="img-upload" id="imgList"></div>
           <input type="file" id="f-files" accept="image/jpeg,image/png,image/webp" multiple style="display:none;">
         </div>
+        <div class="form-item">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="f-public" checked style="width:16px;height:16px;accent-color:var(--accent);">
+            <span>对外显示</span>
+          </label>
+          <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">取消勾选后，该反馈仅管理员可见</div>
+        </div>
         <div class="tip-msg" id="submitTip"></div>
         <div class="btn-row">
           <button class="btn primary" id="submitBtn" data-i18n="fSubmit">提交反馈</button>
@@ -801,6 +808,7 @@ function normalizeItem(o){
     status: o.status || 'pending',
     reply: o.reply || '',
     images: o.images || [],
+    isPublic: o.is_public !== false,
     createdAt: o.created_at || ''
   };
 }
@@ -816,9 +824,11 @@ function createdAtToTs(item){
   return raw ? new Date(raw).getTime() : 0;
 }
 
-function fetchAll(){
+function fetchAll(publicOnly){
   if (isCloud()) {
-    return cloudGet('/rest/v1/Feedback?select=*&order=created_at.desc&limit=500').then(function(res){
+    var q = '/rest/v1/Feedback?select=*&order=created_at.desc&limit=500';
+    if (publicOnly) { q += '&is_public=eq.true'; }
+    return cloudGet(q).then(function(res){
       return (res || []).map(normalizeItem);
     });
   }
@@ -1035,7 +1045,8 @@ document.getElementById('submitBtn').addEventListener('click', function(){
       contact: contact,
       status: 'pending',
       reply: '',
-      images: urls
+      images: urls,
+      is_public: document.getElementById('f-public').checked
     };
     return saveOne(obj);
   }).then(function(item){
@@ -1080,9 +1091,10 @@ function renderList(){
   var kw = (document.getElementById('listSearch').value || '').trim().toLowerCase();
   var fs = document.getElementById('filterStatus').value;
   var ft = document.getElementById('filterType').value;
-  fetchAll().then(function(all){
+  fetchAll(true).then(function(all){
     listCache = all;
     var list = all.filter(function(it){
+      if (it.isPublic === false) { return false; }
       if (fs && it.status !== fs) { return false; }
       if (ft && it.type !== ft) { return false; }
       if (kw) {
@@ -1146,10 +1158,10 @@ function renderDetail(id){
     wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
     return;
   }
-  fetchAll().then(function(all){
+  fetchAll(true).then(function(all){
     var it = null;
     for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id) { it = all[i]; break; }
+      if (all[i].id === id && all[i].isPublic !== false) { it = all[i]; break; }
     }
     if (!it) {
       wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
@@ -1275,6 +1287,7 @@ function renderAdminList(){
       head.innerHTML =
         '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
         '<span class="fb-type">' + escapeHtml(it.gameId) + ' · ' + escapeHtml(typeName(it.type)) + '</span>' +
+        (it.isPublic === false ? '<span class="fb-status" style="background:var(--danger);color:#fff;">私密</span>' : '') +
         '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>';
       var desc = document.createElement('div');
       desc.className = 'fb-desc';
