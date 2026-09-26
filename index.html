@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -269,6 +269,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
   box-shadow:var(--shadow);margin:10px 0;
 }
 .admin-item .fb-head{margin-bottom:8px;}
+.admin-item .fb-desc{-webkit-line-clamp:unset;display:block;white-space:pre-wrap;}
 .admin-item textarea{
   width:100%;min-height:70px;
   padding:9px 11px;border:1px solid var(--border);border-radius:6px;
@@ -807,7 +808,8 @@ function createdAtToTs(item){
   if (item._ts) { return item._ts; }
   var raw = item.createdAt;
   if (typeof raw === 'string') {
-    var ts = Date.parse(raw);
+    var s = String(raw);
+    var ts = Date.parse(s.indexOf('T') === -1 ? s.replace(' ', 'T') + 'Z' : s);
     if (!isNaN(ts)) { return ts; }
     return 0;
   }
@@ -1343,8 +1345,28 @@ function renderAdminList(){
       });
       var btnRow = document.createElement('div');
       btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;';
+      var view = document.createElement('button');
+      view.className = 'btn save-btn';
+      view.textContent = t('detailTitle') || '鏌ョ湅瀹屾暣鎶曠';
+      view.addEventListener('click', function(){
+        location.hash = '#/detail?id=' + encodeURIComponent(it.id);
+      });
+      btnRow.appendChild(view);
       btnRow.appendChild(save);
       btnRow.appendChild(del);
+      var imgs = (it.images || []);
+      if (imgs.length) {
+        var imgRow = document.createElement('div');
+        imgRow.className = 'fb-thumbs';
+        imgs.forEach(function(u){
+          var im = document.createElement('img');
+          im.src = u; im.alt = 'shot';
+          im.style.cssText = 'cursor:zoom-in;';
+          im.onclick = function(){ window.open(u, '_blank'); };
+          imgRow.appendChild(im);
+        });
+        card.appendChild(imgRow);
+      }
       card.appendChild(head);
       card.appendChild(desc);
       card.appendChild(selRow);
