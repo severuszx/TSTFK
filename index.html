@@ -1129,6 +1129,7 @@ function renderList(){
     wrap.innerHTML = html;
     Array.prototype.forEach.call(wrap.querySelectorAll('.fb-card'), function(card){
       card.addEventListener('click', function(){
+        sessionStorage.setItem('tstfb-detail-from', 'list');
         location.hash = '#/detail?id=' + encodeURIComponent(card.dataset.id);
       });
     });
@@ -1150,7 +1151,9 @@ document.getElementById('filterType').addEventListener('change', function(){
  * 详情
  * ================================================================ */
 document.getElementById('detailBack').addEventListener('click', function(){
-  location.hash = '#/list';
+  var from = sessionStorage.getItem('tstfb-detail-from') || 'list';
+  sessionStorage.removeItem('tstfb-detail-from');
+  location.hash = (from === 'admin') ? '#/admin' : '#/list';
 });
 function renderDetail(id){
   var wrap = document.getElementById('detailWrap');
@@ -1362,6 +1365,7 @@ function renderAdminList(){
       view.className = 'btn save-btn';
       view.textContent = '查看完整投稿';
       view.addEventListener('click', function(){
+        sessionStorage.setItem('tstfb-detail-from', 'admin');
         location.hash = '#/detail?id=' + encodeURIComponent(it.id);
       });
       btnRow.appendChild(view);
