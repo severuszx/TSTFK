@@ -369,7 +369,6 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
     <nav class="main-nav" id="mainNav">
       <button class="nav-link active" data-route="submit" data-i18n="navSubmit">提交反馈</button>
       <button class="nav-link" data-route="list" data-i18n="navList">反馈列表</button>
-      <button class="nav-link" data-route="admin" data-i18n="navAdmin">管理入口</button>
     </nav>
     <div class="header-right">
       <button class="theme-toggle" id="themeToggle" title="切换深色/浅色" aria-label="切换主题">
@@ -405,10 +404,11 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
         <div class="form-item">
           <label class="form-label" for="f-desc"><span class="req">*</span> <span data-i18n="fDesc">问题描述</span></label>
           <textarea id="f-desc" maxlength="2000"></textarea>
+          <div class="desc-count" id="descCount">0/2000</div>
         </div>
         <div class="form-item">
           <label class="form-label" for="f-time" data-i18n="fTime">发生时间</label>
-          <input type="text" id="f-time" maxlength="40" autocomplete="off" placeholder="例如：2026-09-05 20:00">
+          <input type="datetime-local" id="f-time">
         </div>
         <div class="form-item">
           <label class="form-label" for="f-contact" data-i18n="fContact">联系方式</label>
@@ -425,6 +425,14 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
             <span>对外显示</span>
           </label>
           <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;">取消勾选后，该反馈仅管理员可见</div>
+        </div>
+        <div class="form-item">
+          <label class="form-label" for="f-captcha"><span class="req">*</span> <span data-i18n="captchaLabel">验证码</span></label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="f-captcha" maxlength="8" autocomplete="off" style="width:96px;" data-i18n-ph="captchaPh" placeholder="输入计算结果">
+            <span id="captchaQ" style="font-size:15px;font-weight:700;color:var(--accent);white-space:nowrap;"></span>
+            <span id="captchaTip" style="font-size:12px;color:var(--text-secondary);"></span>
+          </div>
         </div>
         <div class="tip-msg" id="submitTip"></div>
         <div class="btn-row">
@@ -455,8 +463,15 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
           <option value="appeal" data-i18n="typeAppeal">处罚申诉</option>
           <option value="other" data-i18n="typeOther">其他</option>
         </select>
+        <select id="filterSort">
+          <option value="new" data-i18n="sortNew">最新</option>
+          <option value="old" data-i18n="sortOld">最早</option>
+        </select>
       </div>
       <div id="listWrap"></div>
+      <div style="text-align:center;margin:14px 0;">
+        <button class="btn" id="loadMoreBtn" style="display:none;" data-i18n="loadMore">加载更多</button>
+      </div>
     </div>
   </section>
 
@@ -517,7 +532,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
       <div class="footer-col">
         <h4>联系我们</h4>
         <ul class="footer-links">
-          <li>QQ交流群：833470853</li>
+          <li>QQ交流群：<button class="btn" id="fbkCopyQQ" style="padding:2px 10px;font-size:13px;min-height:26px;">833470853</button></li>
           <li>服务器：mc.163.com/open/mc_realms/?realms=270239C36AD</li>
           <li><a href="https://theslowtidefk.pages.dev/" target="_blank" rel="noopener">问题反馈</a></li>
         </ul>
@@ -605,7 +620,20 @@ var I18N = {
     imgTooBig:'图片超过5MB，请压缩后重试',
     imgBadType:'仅支持 JPG/PNG/WebP 格式',
     imgProcFail:'图片处理失败',
-    footer:'© 2026 The Slow Tide'
+    footer:'© 2026 The Slow Tide',
+    captchaLabel:'验证码',
+    captchaPh:'输入计算结果',
+    captchaWrong:'验证码错误',
+    sortNew:'最新',
+    sortOld:'最早',
+    loadMore:'加载更多',
+    appendTitle:'追加补充',
+    appendPh:'补充说明（可选）',
+    appendBtn:'追加',
+    appendOk:'已追加补充',
+    appendErr:'追加失败，请稍后再试',
+    contactErr:'联系方式格式不正确（QQ号或邮箱）',
+    loginBlocked:'尝试过于频繁，请稍后再试'
   },
 };
 
@@ -721,6 +749,28 @@ function switchRoute(route){
   if (route === 'admin') { renderAdmin(); }
   window.scrollTo(0, 0);
 }
+function parseListQuery(){
+  var h = location.hash || '';
+  var q = {};
+  var qi = h.indexOf('?');
+  if (qi !== -1) {
+    h.slice(qi + 1).split('&').forEach(function(kv){
+      var p = kv.split('=');
+      if (p.length === 2) { q[decodeURIComponent(p[0])] = decodeURIComponent(p[1]); }
+    });
+  }
+  return q;
+}
+function updateListHash(){
+  var q = parseListQuery();
+  q.status = document.getElementById('filterStatus').value;
+  q.type = document.getElementById('filterType').value;
+  q.sort = document.getElementById('filterSort').value;
+  var parts = [];
+  for (var k in q) { if (q[k]) { parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(q[k])); } }
+  var nh = '#/list' + (parts.length ? '?' + parts.join('&') : '');
+  if (location.hash !== nh) { history.replaceState(null, '', nh); }
+}
 function parseHash(){
   var h = location.hash || '#/submit';
   if (h.indexOf('#/detail') === 0) {
@@ -728,6 +778,13 @@ function parseHash(){
     detailId = m ? decodeURIComponent(m[1]) : null;
     switchRoute('detail');
   } else if (h.indexOf('#/list') === 0) {
+    var q = parseListQuery();
+    var fs = document.getElementById('filterStatus');
+    var ft = document.getElementById('filterType');
+    var so = document.getElementById('filterSort');
+    if (q.status && fs) { fs.value = q.status; }
+    if (q.type && ft) { ft.value = q.type; }
+    if (q.sort && so) { so.value = q.sort; }
     switchRoute('list');
   } else if (h.indexOf('#/admin') === 0) {
     switchRoute('admin');
@@ -1029,6 +1086,15 @@ document.getElementById('submitBtn').addEventListener('click', function(){
   var contact = document.getElementById('f-contact').value.trim();
   if (!gameId) { tip.textContent = t('errNoName'); tip.className = 'tip-msg error'; return; }
   if (!desc) { tip.textContent = t('errNoDesc'); tip.className = 'tip-msg error'; return; }
+  if (contact) {
+    var okContact = /^[1-9]\d{4,11}$/.test(contact) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+    if (!okContact) { tip.textContent = t('contactErr'); tip.className = 'tip-msg error'; return; }
+  }
+  var ca = parseInt(document.getElementById('f-captcha').value.trim(), 10);
+  if (isNaN(ca) || ca !== captchaA + captchaB) {
+    tip.textContent = t('captchaWrong'); tip.className = 'tip-msg error';
+    genCaptcha(); return;
+  }
   var btn = document.getElementById('submitBtn');
   btn.disabled = true;
   tip.textContent = '';
@@ -1086,11 +1152,14 @@ function statusClass(v){
   if (v === 'done') { return 'done'; }
   return 'pending';
 }
+var listPageSize = 15;
+var listFull = [];
 function renderList(){
   var wrap = document.getElementById('listWrap');
   var kw = (document.getElementById('listSearch').value || '').trim().toLowerCase();
   var fs = document.getElementById('filterStatus').value;
   var ft = document.getElementById('filterType').value;
+  var so = document.getElementById('filterSort').value;
   fetchAll(true).then(function(all){
     listCache = all;
     var list = all.filter(function(it){
@@ -1103,48 +1172,67 @@ function renderList(){
       }
       return true;
     });
-    if (!list.length) {
-      wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
-      return;
-    }
-    var html = '';
-    list.forEach(function(it){
-      var ts = createdAtToTs(it);
-      var thumbs = '';
-      (it.images || []).slice(0, 3).forEach(function(u){
-        thumbs += '<img src="' + escapeHtml(u) + '" alt="shot">';
-      });
-      html +=
-        '<div class="fb-card" data-id="' + escapeHtml(it.id) + '">' +
-          '<div class="fb-head">' +
-            '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
-            '<span class="fb-type">' + escapeHtml(typeName(it.type)) + '</span>' +
-            '<span class="fb-status ' + statusClass(it.status) + '">' + escapeHtml(statusName(it.status)) + '</span>' +
-            '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>' +
-          '</div>' +
-          '<div class="fb-desc">' + escapeHtml(it.description) + '</div>' +
-          (thumbs ? '<div class="fb-thumbs">' + thumbs + '</div>' : '') +
-        '</div>';
-    });
-    wrap.innerHTML = html;
-    Array.prototype.forEach.call(wrap.querySelectorAll('.fb-card'), function(card){
-      card.addEventListener('click', function(){
-        sessionStorage.setItem('tstfb-detail-from', 'list');
-        location.hash = '#/detail?id=' + encodeURIComponent(card.dataset.id);
-      });
-    });
+    if (so === 'old') { list.sort(function(a,b){ return createdAtToTs(a) - createdAtToTs(b); }); }
+    else { list.sort(function(a,b){ return createdAtToTs(b) - createdAtToTs(a); }); }
+    listFull = list;
+    renderListPage();
   }).catch(function(){
     wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
   });
 }
+var listShown = 0;
+function renderListPage(){
+  var wrap = document.getElementById('listWrap');
+  var more = document.getElementById('loadMoreBtn');
+  if (!listFull.length) {
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('listEmpty')) + '</div>';
+    if (more) { more.style.display = 'none'; }
+    return;
+  }
+  listShown = Math.min(listShown + listPageSize, listFull.length);
+  var html = '';
+  for (var i = 0; i < listShown; i++) {
+    var it = listFull[i];
+    var ts = createdAtToTs(it);
+    var thumbs = '';
+    (it.images || []).slice(0, 3).forEach(function(u){
+      thumbs += '<img src="' + escapeHtml(u) + '" alt="shot">';
+    });
+    html +=
+      '<div class="fb-card" data-id="' + escapeHtml(it.id) + '">' +
+        '<div class="fb-head">' +
+          '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
+          '<span class="fb-type">' + escapeHtml(typeName(it.type)) + '</span>' +
+          '<span class="fb-status ' + statusClass(it.status) + '">' + escapeHtml(statusName(it.status)) + '</span>' +
+          '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>' +
+        '</div>' +
+        '<div class="fb-desc">' + escapeHtml(it.description) + '</div>' +
+        (thumbs ? '<div class="fb-thumbs">' + thumbs + '</div>' : '') +
+      '</div>';
+  }
+  wrap.innerHTML = html;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.fb-card'), function(card){
+    card.addEventListener('click', function(){
+      sessionStorage.setItem('tstfb-detail-from', 'list');
+      location.hash = '#/detail?id=' + encodeURIComponent(card.dataset.id);
+    });
+  });
+  if (more) { more.style.display = listShown < listFull.length ? 'inline-block' : 'none'; }
+}
+document.getElementById('loadMoreBtn').addEventListener('click', function(){
+  renderListPage();
+});
 document.getElementById('listSearch').addEventListener('input', function(){
   if (currentRoute === 'list') { renderList(); }
 });
 document.getElementById('filterStatus').addEventListener('change', function(){
-  if (currentRoute === 'list') { renderList(); }
+  if (currentRoute === 'list') { listShown = 0; renderList(); updateListHash(); }
 });
 document.getElementById('filterType').addEventListener('change', function(){
-  if (currentRoute === 'list') { renderList(); }
+  if (currentRoute === 'list') { listShown = 0; renderList(); updateListHash(); }
+});
+document.getElementById('filterSort').addEventListener('change', function(){
+  if (currentRoute === 'list') { listShown = 0; renderList(); updateListHash(); }
 });
 
 /* ================================================================
@@ -1197,6 +1285,11 @@ function renderDetail(id){
       '<div class="card reply-box">' +
         '<div class="k">' + escapeHtml(t('detailReply')) + '</div>' +
         replyHtml +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="k">' + escapeHtml(t('appendTitle')) + '</div>' +
+        '<textarea id="appendText" maxlength="500" placeholder="' + escapeHtml(t('appendPh')) + '" style="width:100%;min-height:70px;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:14px;margin-top:8px;"></textarea>' +
+        '<button class="btn primary" id="appendBtn" style="margin-top:10px;">' + escapeHtml(t('appendBtn')) + '</button>' +
       '</div>';
     Array.prototype.forEach.call(wrap.querySelectorAll('.gallery img'), function(im){
       im.addEventListener('click', function(){
@@ -1204,6 +1297,33 @@ function renderDetail(id){
         document.getElementById('lightbox').classList.add('open');
       });
     });
+    var ab = document.getElementById('appendBtn');
+    if (ab) {
+      ab.addEventListener('click', function(){
+        var at = document.getElementById('appendText');
+        var txt = (at.value || '').trim();
+        if (!txt) { showToast(t('appendErr')); return; }
+        ab.disabled = true;
+        var req = fetch('/api/rest/v1/rpc/append_feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_feedback_id: id, p_text: txt })
+        }).then(function(r){ return r.json(); });
+        req.then(function(res){
+          if (res && res.ok) {
+            showToast(t('appendOk'));
+            at.value = '';
+            renderDetail(id);
+          } else {
+            showToast(t('appendErr'));
+            ab.disabled = false;
+          }
+        }).catch(function(){
+          showToast(t('appendErr'));
+          ab.disabled = false;
+        });
+      });
+    }
   }).catch(function(){
     wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
   });
@@ -1241,6 +1361,20 @@ document.getElementById('adminLoginBtn').addEventListener('click', function(){
   var pwd = document.getElementById('adminPwd').value;
   var tip = document.getElementById('adminTip');
   tip.className = 'tip-msg';
+  // 登录限速：1 分钟内最多尝试 5 次
+  try {
+    var lk = 'tstfb_login_attempts';
+    var now = Date.now();
+    var rec = JSON.parse(localStorage.getItem(lk) || '{"ts":0,"n":0}');
+    if (now - rec.ts > 60000) { rec = { ts: now, n: 0 }; }
+    if (rec.n >= 5) {
+      tip.textContent = t('loginBlocked');
+      tip.className = 'tip-msg error';
+      return;
+    }
+    rec.n++;
+    localStorage.setItem(lk, JSON.stringify(rec));
+  } catch (e) {}
   function ok(){
     isAdmin = true;
     if (isCloud()) { sessionStorage.setItem('tstfb-admin-pwd', pwd); }
@@ -1395,6 +1529,55 @@ function renderAdminList(){
     wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
   });
 }
+
+/* ================================================================
+ * 验证码 / 字数统计 / 复制群号 / 管理隐藏入口 / 登录限速
+ * ================================================================ */
+var captchaA = 0, captchaB = 0;
+function genCaptcha(){
+  captchaA = Math.floor(Math.random() * 9) + 1;
+  captchaB = Math.floor(Math.random() * 9) + 1;
+  var q = document.getElementById('captchaQ');
+  var tip = document.getElementById('captchaTip');
+  if (q) { q.textContent = captchaA + ' + ' + captchaB + ' = ?'; }
+  if (tip) { tip.textContent = ''; }
+}
+genCaptcha();
+document.addEventListener('input', function(){
+  var dc = document.getElementById('descCount');
+  var dv = document.getElementById('f-desc');
+  if (dc && dv) { dc.textContent = dv.value.length + '/2000'; }
+});
+document.getElementById('fbkCopyQQ').addEventListener('click', function(){
+  var txt = '833470853';
+  function ok(){ showToast('QQ群号已复制'); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok).catch(function(){
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); ok(); } catch (e) {}
+      document.body.removeChild(ta);
+    });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); ok(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+});
+// 管理入口隐藏：连续点击 logo 5 次进入（MK4T4E）
+(function(){
+  var logo = document.querySelector('.logo');
+  var cnt = 0, timer = null;
+  if (logo) logo.addEventListener('click', function(){
+    cnt++;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function(){ cnt = 0; }, 1600);
+    if (cnt >= 5) { cnt = 0; location.hash = '#/admin'; }
+  });
+})();
 
 /* ================================================================
  * 初始化
