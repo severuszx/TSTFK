@@ -370,6 +370,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
 
 
 
+
 /* ===== 液态玻璃主题 v8（iOS 27 液态玻璃·管理员内测）===== */
 html[data-theme="glass"]{
 color-scheme:light;
@@ -911,6 +912,20 @@ html[data-theme="glass"] .tool-grid .tool-card.dragging{
   border-color:rgba(255,255,255,.75);
   box-shadow:0 30px 70px rgba(70,90,160,.35),0 0 0 1.5px rgba(255,255,255,.5);
 }
+
+/* ===== 碰撞粘合动效（粘一起再弹开）+ 纯白/透明背景 ===== */
+html[data-theme="glass"] .stick-pair{animation:gbStick .34s cubic-bezier(.34,1.56,.64,1);}
+@keyframes gbStick{
+  0%{transform:scale(1);}
+  25%{transform:scale(1.04,0.94) translateX(-4px);}
+  55%{transform:scale(1.12,0.86) translateX(-7px);}
+  80%{transform:scale(0.98,1.04) translateX(2px);}
+  100%{transform:scale(1);}
+}
+html[data-theme="glass"][data-gb="plain"] body{background:#ffffff;}
+html[data-theme="glass"][data-gb="transparent"] body{background:transparent;}
+html[data-theme="glass"][data-gb="plain"] .page-wrap,
+html[data-theme="glass"][data-gb="transparent"] .page-wrap{background:transparent;}
 </style>
 </head>
 <body>
@@ -2159,6 +2174,8 @@ parseHash();
 
 
 
+
+
 <button class="glass-bg-btn" style="position:fixed;top:78px;right:92px;z-index:400;" id="glassBgBtn" title="液态玻璃实验室" aria-label="液态玻璃实验室"></button>
 <div class="glass-bg-picker hidden" id="glassBgPicker">
 <div class="gb-picker-title">液态玻璃实验室</div>
@@ -2169,6 +2186,8 @@ parseHash();
 <div class="gb-opt" data-gb="aurora"><span class="gb-swatch" style="background:linear-gradient(135deg,#d3f8f5,#e0f2fe,#ede9fe)"></span><span>极光</span></div>
 <div class="gb-opt" data-gb="sunset"><span class="gb-swatch" style="background:linear-gradient(135deg,#ffe8d6,#ffe4e6,#ffd6e7)"></span><span>日落</span></div>
 <div class="gb-opt" data-gb="mint"><span class="gb-swatch" style="background:linear-gradient(135deg,#d8f8e4,#d9f4f2,#dff0ff)"></span><span>薄荷</span></div>
+<div class="gb-opt" data-gb="plain"><span class="gb-swatch" style="background:#ffffff;border:1px solid #e2e8f0;"></span><span>纯白</span></div>
+<div class="gb-opt" data-gb="transparent"><span class="gb-swatch" style="background:transparent;border:1px dashed #cbd5e1;"></span><span>透明</span></div>
 </div>
 <div class="lab-custom">
 <input type="color" id="gbCustom1" value="#dce7ff" title="渐变色一">
@@ -2503,6 +2522,7 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
       else if(kind==='swap'){tone(620,940,0.07,0.09,0);tone(940,1280,0.06,0.06,0.05);tone(520,760,0.05,0.045,0.1);}
       else if(kind==='drop'){tone(420,170,0.1,0.12,0);tone(150,90,0.09,0.065,0.07);tone(90,60,0.08,0.045,0.14);}
       else if(kind==='edge'){tone(220,140,0.07,0.08,0);}
+      else if(kind==='stick'){tone(280,220,0.06,0.09,0);tone(500,720,0.09,0.07,0.05);tone(240,160,0.06,0.05,0.09);}
       else if(kind==='click'){tone(840,1120,0.05,0.06,0);}
       else if(kind==='pop'){tone(440,980,0.13,0.1,0);tone(980,1240,0.08,0.045,0.04);}
       else if(kind==='toggle'){tone(520,820,0.07,0.08,0);tone(820,620,0.08,0.06,0.05);}
@@ -2541,7 +2561,7 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
   });
   document.addEventListener('pointermove',function(e){
     if(!dragEl||!dragGrid||!isGlass())return;
-    const g=dragGrid,card=dragEl;
+    let g=dragGrid;const card=dragEl;
     const dx=e.clientX-startX,dy=e.clientY-startY;
     if(!dragging&&Math.hypot(dx,dy)<8)return;
     if(!dragging){
@@ -2555,14 +2575,33 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
     }
     const cards=cardEls(g);
     if(dragMode()==='free'){
+      // 跨容器自由排列：拖到其他卡片容器时把卡片迁移过去
+      const hitEl=document.elementFromPoint(e.clientX,e.clientY);
+      const hitGrid=hitEl&&hitEl.closest?hitEl.closest('.card-grid,#feedList,.tool-grid'):null;
+      if(hitGrid&&hitGrid!==g&&g.contains(card)){
+        const srcKey=freeKeyOf(g),dstKey=freeKeyOf(hitGrid);
+        const savedSrc=JSON.parse(localStorage.getItem(srcKey)||'{}')||{};
+        delete savedSrc[card.getAttribute('data-card-id')];
+        localStorage.setItem(srcKey,JSON.stringify(savedSrc));
+        g.removeChild(card);hitGrid.appendChild(card);
+        tagCards(hitGrid);layoutInit(hitGrid);
+        dragGrid=hitGrid;g=hitGrid;
+        const gr=hitGrid.getBoundingClientRect();
+        card.style.left=Math.max(0,Math.min(hitGrid.clientWidth-card.offsetWidth,(e.clientX-gr.left)-card.offsetWidth/2))+'px';
+        card.style.top=Math.max(0,(e.clientY-gr.top)-18)+'px';
+        const savedDst=JSON.parse(localStorage.getItem(dstKey)||'{}')||{};
+        savedDst[card.getAttribute('data-card-id')]=[Math.round(parseFloat(card.style.left)),Math.round(parseFloat(card.style.top))];
+        localStorage.setItem(dstKey,JSON.stringify(savedDst));
+        sfx('drop');
+      }
       const baseX=parseFloat(card.style.left)||card.offsetLeft;
       const baseY=parseFloat(card.style.top)||card.offsetTop;
       const gw=g.clientWidth,cw=cardWidth(g);
       const np={x:Math.max(0,Math.min(gw-cw,baseX+dx)),y:Math.max(0,baseY+dy)};
       if((np.x<=0.5||np.x>=gw-cw-0.5)&&Date.now()-lastEdgeSfx>420){
-        sfx('edge');lastEdgeSfx=Date.now();
-        card.classList.add('edge-shake');
-        setTimeout(function(){card.classList.remove('edge-shake');},240);
+        sfx('stick');lastEdgeSfx=Date.now();
+        card.classList.add('stick-pair');
+        setTimeout(function(){card.classList.remove('stick-pair');},360);
       }
       card.style.left=np.x+'px';card.style.top=np.y+'px';
     }else{
@@ -2576,9 +2615,10 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
       const rawNi=row*c+col;
       const ni=Math.max(0,Math.min(cards.length-1,rawNi));
       if(ni!==rawNi&&Date.now()-lastEdgeSfx>420){
-        sfx('edge');lastEdgeSfx=Date.now();
-        card.classList.add('edge-shake');
-        setTimeout(function(){card.classList.remove('edge-shake');},240);
+        sfx('stick');lastEdgeSfx=Date.now();
+        card.classList.add('stick-pair');
+        if(cards[ni]&&cards[ni]!==card){cards[ni].classList.add('stick-pair');setTimeout(function(){cards[ni].classList.remove('stick-pair');},360);}
+        setTimeout(function(){card.classList.remove('stick-pair');},360);
       }
       if(ni!==curIdx){
         curIdx=ni;
