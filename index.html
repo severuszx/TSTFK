@@ -373,6 +373,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
 
 
 
+
 /* ===== 液态玻璃主题 v8（iOS 27 液态玻璃·管理员内测）===== */
 html[data-theme="glass"]{
 color-scheme:light;
@@ -2210,6 +2211,8 @@ parseHash();
 
 
 
+
+
 <button class="glass-bg-btn" style="position:fixed;top:78px;right:92px;z-index:400;" id="glassBgBtn" title="液态玻璃实验室" aria-label="液态玻璃实验室"></button>
 <div class="glass-bg-picker hidden" id="glassBgPicker">
 <div class="gb-picker-title">液态玻璃实验室</div>
@@ -2302,6 +2305,7 @@ function themeState(){
 function applyTheme(){
   const m=themeState();
   root.setAttribute('data-theme',m);
+  document.body.classList.remove('drag-lock');
   try{
     const c=(m==='dark')?'#0f172a':'#f3f5f8';
     const oldMetas=document.querySelectorAll('meta[name="theme-color"],meta[name="msapplication-navbutton-color"]');
