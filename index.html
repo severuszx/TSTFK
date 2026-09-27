@@ -372,6 +372,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
 
 
 
+
 /* ===== 液态玻璃主题 v8（iOS 27 液态玻璃·管理员内测）===== */
 html[data-theme="glass"]{
 color-scheme:light;
@@ -939,6 +940,22 @@ html[data-theme="glass"][data-gb="plain"] body::before,
 html[data-theme="glass"][data-gb="transparent"] body::before{display:none!important;}
 html[data-theme="glass"][data-gb="plain"] .page-wrap,
 html[data-theme="glass"][data-gb="transparent"] .page-wrap{background:#ffffff!important;}
+
+/* ===== 碰撞完全融合：两张卡先完全重叠再弹开 ===== */
+html[data-theme="glass"] .merge-anim{animation:gbMerge .46s cubic-bezier(.34,1.56,.64,1);z-index:998;}
+html[data-theme="glass"] .merge-hit{animation:gbMergeHit .46s cubic-bezier(.34,1.56,.64,1);}
+@keyframes gbMerge{
+  0%{transform:translate(0,0) scale(1);}
+  42%{transform:translate(var(--mx,0),var(--my,0)) scale(1.1);}
+  66%{transform:translate(var(--mx,0),var(--my,0)) scale(1.04);}
+  100%{transform:translate(0,0) scale(1);}
+}
+@keyframes gbMergeHit{
+  0%{transform:scale(1);}
+  42%{transform:scale(1.1);}
+  66%{transform:scale(1.04);}
+  100%{transform:scale(1);}
+}
 </style>
 </head>
 <body>
@@ -2191,6 +2208,8 @@ parseHash();
 
 
 
+
+
 <button class="glass-bg-btn" style="position:fixed;top:78px;right:92px;z-index:400;" id="glassBgBtn" title="液态玻璃实验室" aria-label="液态玻璃实验室"></button>
 <div class="glass-bg-picker hidden" id="glassBgPicker">
 <div class="gb-picker-title">液态玻璃实验室</div>
@@ -2554,7 +2573,7 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
     sfx('click');
   },true);
 
-  let dragEl=null,dragGrid=null,startX=0,startY=0,startIdx=-1,curIdx=-1,dragging=false,dragFrozen=false;
+  let dragEl=null,dragGrid=null,startX=0,startY=0,startIdx=-1,curIdx=-1,dragging=false,dragFrozen=false,merging=false;
   document.addEventListener('pointerdown',function(e){
     if(!isGlass())return;
     const card=e.target.closest('.card,.tool-card');
@@ -2598,9 +2617,12 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
         const savedSrc=JSON.parse(localStorage.getItem(srcKey)||'{}')||{};
         delete savedSrc[card.getAttribute('data-card-id')];
         localStorage.setItem(srcKey,JSON.stringify(savedSrc));
-        g.removeChild(card);hitGrid.appendChild(card);
+        g.removeChild(card);
+        tagCards(g);layoutInit(g);
+        hitGrid.appendChild(card);
         tagCards(hitGrid);layoutInit(hitGrid);
         dragGrid=hitGrid;g=hitGrid;
+        card.style.zIndex='999';
         const gr=hitGrid.getBoundingClientRect();
         card.style.left=Math.max(0,Math.min(hitGrid.clientWidth-card.offsetWidth,(e.clientX-gr.left)-card.offsetWidth/2))+'px';
         card.style.top=Math.max(0,(e.clientY-gr.top)-18)+'px';
@@ -2609,16 +2631,19 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
         localStorage.setItem(dstKey,JSON.stringify(savedDst));
         sfx('drop');
       }
-      const baseX=parseFloat(card.style.left)||card.offsetLeft;
-      const baseY=parseFloat(card.style.top)||card.offsetTop;
-      const gw=g.clientWidth,cw=cardWidth(g);
-      const np={x:Math.max(0,Math.min(gw-cw,baseX+dx)),y:Math.max(0,baseY+dy)};
-      if((np.x<=0.5||np.x>=gw-cw-0.5)&&Date.now()-lastEdgeSfx>420){
+      card.style.zIndex='999';
+      const gr=g.getBoundingClientRect();
+      const cw=cardWidth(g);
+      const nx=(e.clientX-gr.left)-card.offsetWidth/2;
+      const ny=(e.clientY-gr.top)-18;
+      const px=Math.max(0,Math.min(g.clientWidth-cw,nx));
+      const py=Math.max(0,ny);
+      if((px<=0.5||px>=g.clientWidth-cw-0.5)&&Date.now()-lastEdgeSfx>420){
         sfx('stick');lastEdgeSfx=Date.now();
         card.classList.add('stick-pair');
         setTimeout(function(){card.classList.remove('stick-pair');},360);
       }
-      card.style.left=np.x+'px';card.style.top=np.y+'px';
+      card.style.left=px+'px';card.style.top=py+'px';
     }else{
       const c=cols(g),cw=cardWidth(g),ch=cards[0]?cards[0].offsetHeight:0;
       const sp=posOf(g,startIdx);
@@ -2631,10 +2656,25 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
       const ni=Math.max(0,Math.min(cards.length-1,rawNi));
       if(ni!==rawNi&&Date.now()-lastEdgeSfx>420){
         sfx('stick');lastEdgeSfx=Date.now();
-        card.classList.add('stick-pair');
-        if(cards[ni]&&cards[ni]!==card){cards[ni].classList.add('stick-pair');setTimeout(function(){cards[ni].classList.remove('stick-pair');},360);}
-        setTimeout(function(){card.classList.remove('stick-pair');},360);
+        const target=cards[ni];
+        if(target&&target!==card&&!merging){
+          merging=true;
+          const cr=card.getBoundingClientRect(),tr=target.getBoundingClientRect();
+          card.style.transition='none';
+          card.style.transform='';
+          card.style.setProperty('--mx',(tr.left-cr.left)+'px');
+          card.style.setProperty('--my',(tr.top-cr.top)+'px');
+          card.classList.add('merge-anim');
+          target.classList.add('merge-hit');
+          setTimeout(function(){
+            merging=false;
+            card.classList.remove('merge-anim');
+            target.classList.remove('merge-hit');
+            card.style.setProperty('--mx','0px');card.style.setProperty('--my','0px');
+          },460);
+        }
       }
+      if(merging){return;}
       if(ni!==curIdx){
         curIdx=ni;
         const id=card.getAttribute('data-card-id');
@@ -2658,7 +2698,7 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
   function endDrag(){
     if(!dragEl||!dragGrid||!isGlass())return;
     const card=dragEl,g=dragGrid;
-    dragEl=null;dragGrid=null;
+    dragEl=null;dragGrid=null;merging=false;
     if(!dragging)return;
     dragging=false;
     if(dragFrozen){
