@@ -374,6 +374,7 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
 
 
 
+
 /* ===== 液态玻璃主题 v8（iOS 27 液态玻璃·管理员内测）===== */
 html[data-theme="glass"]{
 color-scheme:light;
@@ -398,7 +399,12 @@ color-scheme:light;
 html[data-theme="glass"] body{
 background:linear-gradient(160deg,#dee9ff 0%,#eaf2ff 26%,#e6efff 48%,#e5eeff 72%,#eef3ff 100%);
 background-attachment:fixed;
+background-size:220% 220%;
+animation:gbFlow 26s ease-in-out infinite;
 }
+@keyframes gbFlow{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
+html[data-theme="glass"][data-gb="plain"] body,
+html[data-theme="glass"][data-gb="transparent"] body{animation:none;background-size:auto;}
 /* 顶部柔和透亮光 */
 html[data-theme="glass"] body::before{
 content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -539,6 +545,10 @@ box-shadow:0 30px 70px rgba(70,90,160,.3),0 0 0 1px rgba(255,255,255,.4),inset 0
 html[data-theme="glass"][data-gb="aurora"] body{background:linear-gradient(165deg,#d3f8f5 0%,#e0f2fe 30%,#ede9fe 60%,#dff0ff 100%);}
 html[data-theme="glass"][data-gb="sunset"] body{background:linear-gradient(165deg,#ffe8d6 0%,#ffe4e6 35%,#ffd6e7 65%,#ffe8e0 100%);}
 html[data-theme="glass"][data-gb="mint"] body{background:linear-gradient(165deg,#d8f8e4 0%,#d9f4f2 30%,#dff0ff 65%,#e8f2ff 100%);}
+html[data-theme="glass"][data-gb="cyber"] body{background:linear-gradient(165deg,#ff5f8f 0%,#a855f7 40%,#6366f1 75%,#312e81 100%);}
+html[data-theme="glass"][data-gb="forest"] body{background:linear-gradient(165deg,#d1fae5 0%,#a7f3d0 35%,#86efac 70%,#d9f99d 100%);}
+html[data-theme="glass"][data-gb="ocean"] body{background:linear-gradient(165deg,#cffafe 0%,#a5f3fc 35%,#67e8f9 70%,#7dd3fc 100%);}
+html[data-theme="glass"][data-gb="sakura"] body{background:linear-gradient(165deg,#ffe4e6 0%,#fecdd3 35%,#fbcfe8 70%,#fae8ff 100%);}
 html[data-theme="glass"][data-gb="custom"] body{background:linear-gradient(165deg,var(--gb-c1,#dce7ff) 0%,var(--gb-c2,#f4e8fb) 100%);}
 /* 色板按钮与浮层 */
 .glass-bg-picker{display:none;}
@@ -957,6 +967,65 @@ html[data-theme="glass"] .merge-hit{animation:gbMergeHit .46s cubic-bezier(.34,1
   66%{transform:scale(1.04);}
   100%{transform:scale(1);}
 }
+
+/* ===== 深色玻璃（实验室开关开启后生效） ===== */
+html[data-theme="glass"][data-glass-dark]{
+color-scheme:dark;--text:#e7ecf5;--text-secondary:#93a0b5;
+--border:rgba(255,255,255,.12);--card:rgba(30,38,58,.45);--hover:rgba(70,90,150,.3);
+--header-bg:rgba(22,28,44,.55);--primary:#e7ecf5;--accent:#7ea2ff;
+--shadow:0 20px 60px rgba(0,0,0,.4);
+}
+html[data-theme="glass"][data-glass-dark] body{background:linear-gradient(160deg,#10182e 0%,#16203a 26%,#1a2440 48%,#141d36 72%,#0f1628 100%);background-attachment:fixed;background-size:220% 220%;animation:gbFlow 26s ease-in-out infinite;}
+html[data-theme="glass"][data-glass-dark] body::before{opacity:.5;}
+html[data-theme="glass"][data-glass-dark] .card,
+html[data-theme="glass"][data-glass-dark] .server-card,
+html[data-theme="glass"][data-glass-dark] .notice-card,
+html[data-theme="glass"][data-glass-dark] .search-row input,
+html[data-theme="glass"][data-glass-dark] .suggest-box,
+html[data-theme="glass"][data-glass-dark] .results-box{background:rgba(40,52,84,.45);border-color:rgba(255,255,255,.12);}
+html[data-theme="glass"][data-glass-dark] .site-header{background:linear-gradient(180deg,rgba(28,36,60,.6),rgba(22,28,44,.5));border-bottom-color:rgba(255,255,255,.1);}
+html[data-theme="glass"][data-glass-dark] .time-badge{background:rgba(40,52,84,.4);}
+/* ===== 玻璃效果开关（body.glass-off：卡片/导航恢复实色） ===== */
+body.glass-off html[data-theme="glass"] .card,
+body.glass-off html[data-theme="glass"] .server-card,
+body.glass-off html[data-theme="glass"] .notice-card,
+body.glass-off html[data-theme="glass"] .site-header,
+body.glass-off html[data-theme="glass"] .time-badge,
+body.glass-off html[data-theme="glass"] .search-row input,
+body.glass-off html[data-theme="glass"] .suggest-box,
+body.glass-off html[data-theme="glass"] .results-box,
+body.glass-off html[data-theme="glass"] .glass-bg-picker{background:rgba(255,255,255,.96)!important;backdrop-filter:none!important;}
+body.glass-off html[data-theme="glass"][data-glass-dark] .card,
+body.glass-off html[data-theme="glass"][data-glass-dark] .server-card,
+body.glass-off html[data-theme="glass"][data-glass-dark] .notice-card,
+body.glass-off html[data-theme="glass"][data-glass-dark] .site-header,
+body.glass-off html[data-theme="glass"][data-glass-dark] .time-badge,
+body.glass-off html[data-theme="glass"][data-glass-dark] .search-row input,
+body.glass-off html[data-theme="glass"][data-glass-dark] .suggest-box,
+body.glass-off html[data-theme="glass"][data-glass-dark] .results-box,
+body.glass-off html[data-theme="glass"][data-glass-dark] .glass-bg-picker{background:rgba(24,30,48,.97)!important;backdrop-filter:none!important;}
+/* ===== 性能优先（body.glass-lite：全站关闭 backdrop-filter） ===== */
+body.glass-lite html[data-theme="glass"] *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+/* ===== 实验室新控件 ===== */
+html[data-theme="glass"] .gb-picker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+html[data-theme="glass"] .gb-close{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,.7);background:rgba(255,255,255,.35);color:#5b6675;font-size:13px;cursor:pointer;line-height:1;}
+html[data-theme="glass"] .gb-close:hover{background:rgba(255,255,255,.6);color:#dc2626;}
+html[data-theme="glass"] .gb-mini-btn{padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.7);background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,.3));color:#3b4660;font-size:12px;cursor:pointer;}
+html[data-theme="glass"] .gb-mini-btn:hover{transform:scale(1.05);}
+html[data-theme="glass"] .gb-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+html[data-theme="glass"] .gb-switches{display:flex;flex-direction:column;gap:6px;}
+html[data-theme="glass"] .gb-switch{display:flex;align-items:center;gap:6px;font-size:12px;color:#3b4660;cursor:pointer;}
+html[data-theme="glass"] .gb-switch input{width:15px;height:15px;accent-color:#4f63d8;}
+html[data-theme="glass"] .gb-share-row{display:flex;gap:6px;margin-top:8px;align-items:center;}
+html[data-theme="glass"] .gb-share-row input{flex:1;min-width:0;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.4);color:#1f2937;font-size:12px;}
+html[data-theme="glass"] .gb-custom-preview{width:18px;height:18px;border-radius:6px;border:1px solid rgba(255,255,255,.8);background:linear-gradient(135deg,#dce7ff,#f4e8fb);display:inline-block;vertical-align:middle;}
+/* ===== 全卡玻璃：搜索/结果/轮播等实色元素统一玻璃 ===== */
+html[data-theme="glass"] .search-row input,
+html[data-theme="glass"] .suggest-box,
+html[data-theme="glass"] .results-box,
+html[data-theme="glass"] .hero-slider-wrap,
+html[data-theme="glass"] .notice-card{background:rgba(255,255,255,.3);backdrop-filter:blur(24px) saturate(220%);border:1px solid rgba(255,255,255,.55);}
+html[data-theme="glass"] .search-row input{color:#1f2937;}
 </style>
 </head>
 <body>
@@ -2213,9 +2282,11 @@ parseHash();
 
 
 
+
+
 <button class="glass-bg-btn" style="position:fixed;top:78px;right:92px;z-index:400;" id="glassBgBtn" title="液态玻璃实验室" aria-label="液态玻璃实验室"></button>
 <div class="glass-bg-picker hidden" id="glassBgPicker">
-<div class="gb-picker-title">液态玻璃实验室</div>
+<div class="gb-picker-head"><div class="gb-picker-title">液态玻璃实验室</div><button class="gb-close" id="gbClose" title="关闭">&#10005;</button></div>
 <div class="lab-section">
 <div class="lab-title">背景壁纸</div>
 <div class="lab-row">
@@ -2223,13 +2294,26 @@ parseHash();
 <div class="gb-opt" data-gb="aurora"><span class="gb-swatch" style="background:linear-gradient(135deg,#d3f8f5,#e0f2fe,#ede9fe)"></span><span>极光</span></div>
 <div class="gb-opt" data-gb="sunset"><span class="gb-swatch" style="background:linear-gradient(135deg,#ffe8d6,#ffe4e6,#ffd6e7)"></span><span>日落</span></div>
 <div class="gb-opt" data-gb="mint"><span class="gb-swatch" style="background:linear-gradient(135deg,#d8f8e4,#d9f4f2,#dff0ff)"></span><span>薄荷</span></div>
+<div class="gb-opt" data-gb="cyber"><span class="gb-swatch" style="background:linear-gradient(135deg,#ff5f8f,#c084fc,#7c3aed)"></span><span>赛博</span></div>
+<div class="gb-opt" data-gb="forest"><span class="gb-swatch" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0,#86efac)"></span><span>森林</span></div>
+<div class="gb-opt" data-gb="ocean"><span class="gb-swatch" style="background:linear-gradient(135deg,#cffafe,#a5f3fc,#67e8f9)"></span><span>海洋</span></div>
+<div class="gb-opt" data-gb="sakura"><span class="gb-swatch" style="background:linear-gradient(135deg,#ffe4e6,#fecdd3,#fbcfe8)"></span><span>樱花</span></div>
 <div class="gb-opt" data-gb="plain"><span class="gb-swatch" style="background:#ffffff;border:1px solid #e2e8f0;"></span><span>纯白</span></div>
 <div class="gb-opt" data-gb="transparent"><span class="gb-swatch" style="background:transparent;border:1px dashed #cbd5e1;"></span><span>透明</span></div>
 </div>
 <div class="lab-custom">
-<input type="color" id="gbCustom1" value="#dce7ff" title="渐变色一">
-<input type="color" id="gbCustom2" value="#f4e8fb" title="渐变色二">
-<span style="font-size:11px;color:#5b6675;">自定义</span>
+<input type="color" id="gbCustom1" value="#dce7ff" title="背景渐变起始色">
+<input type="color" id="gbCustom2" value="#f4e8fb" title="背景渐变结束色">
+<span style="font-size:11px;color:#5b6675;">自定义（起始 / 结束色）</span>
+<span class="gb-custom-preview" id="gbCustomPrev"></span>
+</div>
+</div>
+<div class="lab-section">
+<div class="lab-title">强度预设</div>
+<div class="gb-seg" id="gbPresetSeg">
+<button class="gb-seg-btn" data-preset="soft">柔和</button>
+<button class="gb-seg-btn active" data-preset="normal">适中</button>
+<button class="gb-seg-btn" data-preset="strong">强烈</button>
 </div>
 </div>
 <div class="lab-section">
@@ -2259,6 +2343,27 @@ parseHash();
 <div class="gb-seg" id="gbDragSeg">
 <button class="gb-seg-btn active" data-drag="grid">网格排序</button>
 <button class="gb-seg-btn" data-drag="free">自由摆放</button>
+</div>
+</div>
+<div class="lab-section">
+<div class="lab-title">选项</div>
+<div class="gb-switches">
+<label class="gb-switch"><input type="checkbox" id="gbOff"><span>玻璃效果</span></label>
+<label class="gb-switch"><input type="checkbox" id="gbLite"><span>性能优先</span></label>
+<label class="gb-switch"><input type="checkbox" id="gbDark"><span>深色玻璃</span></label>
+</div>
+<div class="gb-actions">
+<button class="gb-mini-btn" id="gbRandom">随机主题</button>
+<button class="gb-mini-btn" id="gbReset">重置默认</button>
+<button class="gb-mini-btn" id="gbShare">生成分享码</button>
+</div>
+<div class="gb-share-row" id="gbShareRow" style="display:none;">
+<input type="text" id="gbShareCode" readonly>
+<button class="gb-mini-btn" id="gbShareCopy">复制</button>
+</div>
+<div class="gb-share-row">
+<input type="text" id="gbShareIn" placeholder="输入分享码…">
+<button class="gb-mini-btn" id="gbShareApply">应用</button>
 </div>
 </div>
 </div>
@@ -2332,6 +2437,9 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
   function applyGlassBg(){
     const bg=localStorage.getItem('tst-glass-bg')||'default';
     const root=document.documentElement;
+    document.body.classList.toggle('glass-off',localStorage.getItem('tst-glass-off')==='1');
+    document.body.classList.toggle('glass-lite',localStorage.getItem('tst-glass-lite')==='1');
+    root.toggleAttribute('data-glass-dark',localStorage.getItem('tst-glass-dark')==='1');
     if(bg.indexOf('custom-')===0){
       root.setAttribute('data-gb','custom');
       const parts=bg.split('-');
@@ -2378,6 +2486,8 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
     el.addEventListener('input',function(){
       localStorage.setItem(key,el.value);
       applyGlassSliders();
+      var tt=document.getElementById('glassToast');
+      if(tt){tt.classList.add('show');clearTimeout(tt._t);tt._t=setTimeout(function(){tt.classList.remove('show');},900);}
     });
   }
   function syncGlassBgUI(){
@@ -2408,10 +2518,16 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
   });
   const c1in=document.getElementById('gbCustom1'),c2in=document.getElementById('gbCustom2');
   if(c1in&&c2in){
+    const updatePrev=function(){
+      const pv=document.getElementById('gbCustomPrev');
+      if(pv)pv.style.background='linear-gradient(135deg,'+c1in.value+','+c2in.value+')';
+    };
     const applyCustom=function(){
       localStorage.setItem('tst-glass-bg','custom-'+c1in.value.replace('#','')+'-'+c2in.value.replace('#',''));
       applyGlassBg();
+      updatePrev();
     };
+    updatePrev();
     c1in.addEventListener('input',applyCustom);
     c2in.addEventListener('input',applyCustom);
   }
@@ -2419,6 +2535,130 @@ if(typeof syncGlassBgUI==='function')syncGlassBgUI();
   bindSlider('gbSh1','tst-glass-sh1');
   bindSlider('gbSh2','tst-glass-sh2');
   bindSlider('gbSh3','tst-glass-sh3');
+  function gbToast(msg){
+    var tt=document.getElementById('glassToast');
+    if(!tt){tt=document.createElement('div');tt.id='glassToast';tt.style.cssText='position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(16px);z-index:1500;padding:9px 18px;border-radius:12px;background:rgba(255,255,255,.9);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);box-shadow:0 10px 30px rgba(70,90,160,.25);color:#1f2937;font-size:13px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;';document.body.appendChild(tt);}
+    tt.textContent=msg;tt.style.opacity='1';tt.style.transform='translateX(-50%) translateY(0)';
+    clearTimeout(tt._t);tt._t=setTimeout(function(){tt.style.opacity='0';tt.style.transform='translateX(-50%) translateY(16px)';},1400);
+  }
+  // 关闭按钮
+  var gbClose=document.getElementById('gbClose');
+  if(gbClose){gbClose.addEventListener('click',function(){gbPicker.classList.add('hidden');});}
+  // 三个开关
+  function bindCheck(id,key,fn){
+    var el=document.getElementById(id);
+    if(!el)return;
+    el.checked=localStorage.getItem(key)==='1';
+    el.addEventListener('change',function(){
+      localStorage.setItem(key,el.checked?'1':'0');
+      applyGlassBg();
+      if(fn)fn(el.checked);
+      gbToast(el.checked?'已开启':'已关闭');
+    });
+  }
+  bindCheck('gbOff','tst-glass-off');
+  bindCheck('gbLite','tst-glass-lite');
+  bindCheck('gbDark','tst-glass-dark');
+  // 强度预设
+  var presetMap={soft:8,normal:18,strong:34};
+  document.querySelectorAll('#gbPresetSeg .gb-seg-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('#gbPresetSeg .gb-seg-btn').forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      var op=presetMap[b.getAttribute('data-preset')];
+      localStorage.setItem('tst-glass-op',op);
+      applyGlassSliders();
+      gbToast('强度预设：'+(b.textContent||''));
+    });
+  });
+  // 随机主题
+  var gbRandom=document.getElementById('gbRandom');
+  if(gbRandom){
+    gbRandom.addEventListener('click',function(){
+      var bgs=['default','aurora','sunset','mint','cyber','forest','ocean','sakura'];
+      var bg=bgs[Math.floor(Math.random()*bgs.length)];
+      var op=6+Math.floor(Math.random()*40);
+      var sh1=20+Math.floor(Math.random()*40);
+      var sh2=8+Math.floor(Math.random()*20);
+      var sh3=0+Math.floor(Math.random()*24)-8;
+      localStorage.setItem('tst-glass-bg',bg);
+      localStorage.setItem('tst-glass-op',op);
+      localStorage.setItem('tst-glass-sh1',sh1);
+      localStorage.setItem('tst-glass-sh2',sh2);
+      localStorage.setItem('tst-glass-sh3',sh3);
+      applyGlassBg();
+      gbToast('已随机一套主题');
+    });
+  }
+  // 重置默认
+  var gbReset=document.getElementById('gbReset');
+  if(gbReset){
+    gbReset.addEventListener('click',function(){
+      ['tst-glass-bg','tst-glass-op','tst-glass-sh1','tst-glass-sh2','tst-glass-sh3','tst-glass-off','tst-glass-lite','tst-glass-dark'].forEach(function(k){localStorage.removeItem(k);});
+      ['gbOff','gbLite','gbDark'].forEach(function(id){var el=document.getElementById(id);if(el)el.checked=false;});
+      applyGlassBg();
+      gbToast('已恢复默认设置');
+    });
+  }
+  // 分享码
+  var gbShare=document.getElementById('gbShare');
+  if(gbShare){
+    function readGlassSettings(){
+      var o={};
+      o.bg=localStorage.getItem('tst-glass-bg')||'default';
+      o.op=localStorage.getItem('tst-glass-op')||'18';
+      o.sh1=localStorage.getItem('tst-glass-sh1')||'40';
+      o.sh2=localStorage.getItem('tst-glass-sh2')||'16';
+      o.sh3=localStorage.getItem('tst-glass-sh3')||'12';
+      o.off=localStorage.getItem('tst-glass-off')||'0';
+      o.lite=localStorage.getItem('tst-glass-lite')||'0';
+      o.dark=localStorage.getItem('tst-glass-dark')||'0';
+      return o;
+    }
+    function b64Encode(s){try{return btoa(unescape(encodeURIComponent(s)));}catch(e){return '';}}
+    function b64Decode(s){try{return decodeURIComponent(escape(atob(s)));}catch(e){return '';}}
+    gbShare.addEventListener('click',function(){
+      var code='TSTGLASS-'+b64Encode(JSON.stringify(readGlassSettings()));
+      var row=document.getElementById('gbShareRow'),inp=document.getElementById('gbShareCode');
+      if(row)row.style.display='flex';
+      if(inp){inp.value=code;inp.select();}
+      gbToast('分享码已生成，可复制给好友');
+    });
+    var gbShareCopy=document.getElementById('gbShareCopy');
+    if(gbShareCopy){
+      gbShareCopy.addEventListener('click',function(){
+        var inp=document.getElementById('gbShareCode');
+        if(!inp)return;
+        inp.select();
+        try{document.execCommand('copy');gbToast('已复制');}
+        catch(e){gbToast('复制失败，请手动复制');}
+      });
+    }
+    var gbShareApply=document.getElementById('gbShareApply');
+    if(gbShareApply){
+      gbShareApply.addEventListener('click',function(){
+        var inp=document.getElementById('gbShareIn');
+        if(!inp)return;
+        var v=(inp.value||'').trim();
+        var m=v.match(/^TSTGLASS-(.+)$/);
+        if(!m){gbToast('分享码无效');return;}
+        var json=b64Decode(m[1]);
+        var o=null;
+        try{o=JSON.parse(json);}catch(e){}
+        if(!o){gbToast('分享码无效');return;}
+        if(o.bg)localStorage.setItem('tst-glass-bg',o.bg);
+        if(o.op)localStorage.setItem('tst-glass-op',o.op);
+        if(o.sh1)localStorage.setItem('tst-glass-sh1',o.sh1);
+        if(o.sh2)localStorage.setItem('tst-glass-sh2',o.sh2);
+        if(o.sh3)localStorage.setItem('tst-glass-sh3',o.sh3);
+        if(o.off)localStorage.setItem('tst-glass-off',o.off);
+        if(o.lite)localStorage.setItem('tst-glass-lite',o.lite);
+        if(o.dark)localStorage.setItem('tst-glass-dark',o.dark);
+        applyGlassBg();
+        gbToast('已应用分享主题');
+      });
+    }
+  }
   applyGlassBg();
   window.syncGlassBgUI=syncGlassBgUI;
 })();
