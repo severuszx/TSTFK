@@ -279,6 +279,49 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
 .admin-item textarea:focus{border-color:var(--accent);}
 .admin-item .save-btn{min-height:36px;padding:6px 14px;}
 
+/* ===== 管理工具栏（新版）===== */
+.admin-toolbar{
+  display:flex;flex-direction:column;gap:10px;
+  padding:12px 14px;
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow);margin:12px 0;
+}
+.admin-stats{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--text-secondary);}
+.admin-stats .stat{padding:4px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--border);}
+.admin-stats .stat b{color:var(--accent);}
+.admin-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.admin-tabs .tab{
+  padding:6px 14px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg);color:var(--text);
+  font-size:13px;transition:all .15s;
+}
+.admin-tabs .tab:hover{border-color:var(--accent);}
+.admin-tabs .tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+#adminSearch{
+  width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg);color:var(--text);font-size:14px;outline:none;
+}
+#adminSearch:focus{border-color:var(--accent);}
+.admin-batch{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;background:var(--card);border:1px solid var(--accent);border-radius:10px;
+  margin:12px 0;box-shadow:var(--shadow);
+}
+.admin-batch .batch-info{font-size:13px;color:var(--text-secondary);margin-right:auto;}
+.admin-item{position:relative;}
+.admin-item .fb-check{
+  position:absolute;top:14px;right:14px;width:18px;height:18px;cursor:pointer;accent-color:var(--accent);
+}
+.admin-item.checked{outline:2px solid var(--accent);outline-offset:-2px;}
+.admin-item .fb-status{font-size:12px;padding:2px 8px;border-radius:999px;margin-left:6px;}
+.admin-item .fb-head .fb-type{font-size:12px;color:var(--text-secondary);}
+.admin-item .fb-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.admin-item .save-btn{min-height:36px;padding:6px 14px;}
+.admin-item .expand-btn{min-height:36px;padding:6px 14px;}
+.admin-item .edit-zone{display:none;margin-top:10px;}
+.admin-item.editing .edit-zone{display:block;}
+.admin-item .edit-toggle{color:var(--accent);cursor:pointer;font-size:13px;user-select:none;}
+
 /* ===== 图片上传 ===== */
 .img-upload{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
 .img-cell{position:relative;}
@@ -1170,6 +1213,23 @@ html[data-theme="glass"] .search-row input{color:#1f2937;}
           <span class="who" id="adminWho"></span>
           <button class="btn" id="adminLogout" style="min-height:32px;padding:5px 12px;" data-i18n="adminLogout">退出管理</button>
         </div>
+        <div class="admin-toolbar">
+          <div class="admin-stats" id="adminStats"></div>
+          <div class="admin-tabs" id="adminStatusTabs">
+            <button class="tab active" data-st="all">全部</button>
+            <button class="tab" data-st="pending">待处理</button>
+            <button class="tab" data-st="doing">处理中</button>
+            <button class="tab" data-st="done">已处理</button>
+            <button class="tab" data-st="private">私密</button>
+          </div>
+          <input type="search" id="adminSearch" placeholder="搜索编号 / 游戏ID / 内容…">
+        </div>
+        <div class="admin-batch" id="adminBatch" style="display:none;">
+          <span class="batch-info" id="adminBatchInfo"></span>
+          <button class="btn save-btn" id="adminBatchDone">批量标记已处理</button>
+          <button class="btn save-btn" id="adminBatchDelete" style="color:var(--danger);border-color:var(--danger);">批量删除</button>
+          <button class="btn save-btn" id="adminBatchClear">取消选择</button>
+        </div>
         <div id="adminList"></div>
       </div>
     </div>
@@ -1308,7 +1368,7 @@ var I18N = {
  * ================================================================ */
 var root = document.documentElement;
 var lang = 'zhCN';
-var ADMIN_PWD = 'WYJQQNLDYWHM';
+var ADMIN_PWD = 'WYJQQNDYWHM';
 var MAX_IMAGES = 3;
 var MAX_IMG_BYTES = 5 * 1024 * 1024;
 
@@ -2017,6 +2077,7 @@ function renderAdmin(){
     login.style.display = 'none';
     panel.style.display = 'block';
     document.getElementById('adminWho').textContent = t('adminWho');
+    adminBindToolbar();
     renderAdminList();
   } else {
     login.style.display = 'block';
@@ -2073,127 +2134,318 @@ document.getElementById('adminLogout').addEventListener('click', function(){
   sessionStorage.removeItem('tstfb-admin-pwd');
   renderAdmin();
 });
+var adminFilter = 'all';
+var adminSearch = '';
+var adminSel = {};
+var adminAll = [];
+
 function renderAdminList(){
   var wrap = document.getElementById('adminList');
   fetchAll().then(function(all){
-    if (!all.length) {
-      wrap.innerHTML = '<div class="empty">' + escapeHtml(t('adminEmpty')) + '</div>';
-      return;
-    }
-    wrap.innerHTML = '';
-    all.forEach(function(it){
-      var ts = createdAtToTs(it);
-      var card = document.createElement('div');
-      card.className = 'admin-item';
-      var head = document.createElement('div');
-      head.className = 'fb-head';
-      head.innerHTML =
-        '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
-        '<span class="fb-type">' + escapeHtml(it.gameId) + ' · ' + escapeHtml(typeName(it.type)) + '</span>' +
-        (it.isPublic === false ? '<span class="fb-status" style="background:var(--danger);color:#fff;">私密</span>' : '') +
-        '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span>';
-      var desc = document.createElement('div');
-      desc.className = 'fb-desc';
-      desc.textContent = it.description;
-      var selRow = document.createElement('div');
-      selRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 4px;';
-      var selLabel = document.createElement('span');
-      selLabel.className = 'k';
-      selLabel.style.cssText = 'font-size:13px;color:var(--text-secondary);';
-      selLabel.textContent = t('detailStatus') + ': ';
-      var sel = document.createElement('select');
-      sel.style.cssText = 'padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px;';
-      [['pending', t('statusPending')], ['doing', t('statusDoing')], ['done', t('statusDone')]].forEach(function(p){
-        var op = document.createElement('option');
-        op.value = p[0];
-        op.textContent = p[1];
-        if (it.status === p[0]) { op.selected = true; }
-        sel.appendChild(op);
-      });
-      selRow.appendChild(selLabel);
-      selRow.appendChild(sel);
-      var ta = document.createElement('textarea');
-      ta.placeholder = t('adminReplyPh');
-      ta.value = it.reply || '';
-      var save = document.createElement('button');
-      save.className = 'btn save-btn';
-      save.textContent = t('adminSave');
-      save.addEventListener('click', function(){
-        save.disabled = true;
-        var run;
-        if (isCloud()) {
-          var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
-          run = callFunction('adminUpdate', { id: it.id, status: sel.value, reply: ta.value, password: pwd });
-        } else {
-          run = updateOne(it.id, { status: sel.value, reply: ta.value });
-        }
-        run.then(function(){
-          showToast(t('adminSaved'));
-        }).catch(function(e){
-          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
-          else { showToast(t('errCloud')); }
-        }).finally(function(){
-          save.disabled = false;
-        });
-      });
-      var del = document.createElement('button');
-      del.className = 'btn save-btn';
-      del.textContent = t('adminDelete');
-      del.style.cssText = 'min-height:36px;padding:6px 14px;color:var(--danger);border-color:var(--danger);';
-      del.addEventListener('click', function(){
-        if (!window.confirm(t('adminDeleteConfirm'))) { return; }
-        del.disabled = true;
-        var run;
-        if (isCloud()) {
-          var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
-          run = callFunction('adminDelete', { id: it.id, password: pwd });
-        } else {
-          run = deleteOne(it.id);
-        }
-        run.then(function(){
-          showToast(t('adminDeleted'));
-          renderAdminList();
-        }).catch(function(e){
-          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
-          else { showToast(t('errCloud')); }
-          del.disabled = false;
-        });
-      });
-      var btnRow = document.createElement('div');
-      btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;';
-      var view = document.createElement('button');
-      view.className = 'btn save-btn';
-      view.textContent = '查看完整投稿';
-      view.addEventListener('click', function(){
-        sessionStorage.setItem('tstfb-detail-from', 'admin');
-        location.hash = '#/detail?id=' + encodeURIComponent(it.id);
-      });
-      btnRow.appendChild(view);
-      btnRow.appendChild(save);
-      btnRow.appendChild(del);
-      var imgs = (it.images || []);
-      if (imgs.length) {
-        var imgRow = document.createElement('div');
-        imgRow.className = 'fb-thumbs';
-        imgs.forEach(function(u){
-          var im = document.createElement('img');
-          im.src = u; im.alt = 'shot';
-          im.style.cssText = 'cursor:zoom-in;';
-          im.onclick = function(){ window.open(u, '_blank'); };
-          imgRow.appendChild(im);
-        });
-        card.appendChild(imgRow);
-      }
-      card.appendChild(head);
-      card.appendChild(desc);
-      card.appendChild(selRow);
-      card.appendChild(ta);
-      card.appendChild(btnRow);
-      wrap.appendChild(card);
-    });
+    adminAll = all || [];
+    renderAdminStats();
+    renderAdminCards();
   }).catch(function(){
     wrap.innerHTML = '<div class="empty">' + escapeHtml(t('errCloud')) + '</div>';
   });
+}
+
+function renderAdminStats(){
+  var el = document.getElementById('adminStats');
+  if (!el) return;
+  var s = { pending:0, doing:0, done:0, private:0 };
+  adminAll.forEach(function(it){
+    if (it.isPublic === false) s.private++;
+    if (s[it.status] !== undefined) s[it.status]++;
+  });
+  el.innerHTML =
+    '<span class="stat">全部 <b>' + adminAll.length + '</b></span>' +
+    '<span class="stat">待处理 <b>' + s.pending + '</b></span>' +
+    '<span class="stat">处理中 <b>' + s.doing + '</b></span>' +
+    '<span class="stat">已处理 <b>' + s.done + '</b></span>' +
+    (s.private ? '<span class="stat">私密 <b>' + s.private + '</b></span>' : '');
+}
+
+function adminFiltered(){
+  return adminAll.filter(function(it){
+    if (adminFilter === 'private') { if (it.isPublic !== false) return false; }
+    else if (adminFilter !== 'all') { if (it.status !== adminFilter) return false; }
+    if (adminSearch) {
+      var hay = String(it.no||'') + ' ' + String(it.gameId||'') + ' ' + String(it.description||'') + ' ' + String(it.type||'');
+      if (hay.toLowerCase().indexOf(adminSearch.toLowerCase()) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function adminDoUpdate(id, status, reply, done, fail){
+  var run;
+  if (isCloud()) {
+    var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+    run = callFunction('adminUpdate', { id: id, status: status, reply: reply, password: pwd });
+  } else {
+    run = updateOne(id, { status: status, reply: reply });
+  }
+  run.then(done).catch(function(e){
+    if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+    else { showToast(t('errCloud')); }
+    fail && fail();
+  });
+}
+
+function adminDoDelete(id, done, fail){
+  var run;
+  if (isCloud()) {
+    var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
+    run = callFunction('adminDelete', { id: id, password: pwd });
+  } else {
+    run = deleteOne(id);
+  }
+  run.then(done).catch(function(e){
+    if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+    else { showToast(t('errCloud')); }
+    fail && fail();
+  });
+}
+
+function adminRenderBatch(){
+  var batch = document.getElementById('adminBatch');
+  var info = document.getElementById('adminBatchInfo');
+  var n = 0; for (var k in adminSel) { if (adminSel[k]) n++; }
+  if (n > 0) { batch.style.display = 'flex'; info.textContent = '已选择 ' + n + ' 条'; }
+  else { batch.style.display = 'none'; info.textContent = ''; }
+}
+
+function renderAdminCards(){
+  var wrap = document.getElementById('adminList');
+  var list = adminFiltered();
+  wrap.innerHTML = '';
+  if (!list.length) {
+    wrap.innerHTML = '<div class="empty">' + escapeHtml(t('adminEmpty')) + '</div>';
+    adminRenderBatch();
+    return;
+  }
+  list.forEach(function(it){
+    var ts = createdAtToTs(it);
+    var card = document.createElement('div');
+    card.className = 'admin-item' + (adminSel[it.id] ? ' checked' : '');
+    var stName = (it.status === 'doing') ? t('statusDoing') : (it.status === 'done') ? t('statusDone') : t('statusPending');
+    var stColor = (it.status === 'done') ? '#16a34a' : (it.status === 'doing') ? '#d97706' : '#dc2626';
+    var head = document.createElement('div');
+    head.className = 'fb-head';
+    head.innerHTML =
+      '<span class="fb-no">' + escapeHtml(it.no || it.id) + '</span>' +
+      '<span class="fb-status" style="background:' + stColor + ';color:#fff;">' + escapeHtml(stName) + '</span>' +
+      (it.isPublic === false ? '<span class="fb-status" style="background:var(--danger);color:#fff;">私密</span>' : '') +
+      '<span class="fb-time">' + escapeHtml(fmtTime(ts)) + '</span><br>' +
+      '<span class="fb-type">' + escapeHtml(it.gameId) + ' · ' + escapeHtml(typeName(it.type)) + '</span>';
+    var chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'fb-check';
+    chk.checked = !!adminSel[it.id];
+    chk.addEventListener('change', function(){
+      if (chk.checked) { adminSel[it.id] = 1; card.classList.add('checked'); }
+      else { delete adminSel[it.id]; card.classList.remove('checked'); }
+      adminRenderBatch();
+    });
+    var desc = document.createElement('div');
+    desc.className = 'fb-desc';
+    desc.dataset.open = '0';
+    desc.style.cssText = '-webkit-line-clamp:3;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;';
+    desc.textContent = it.description;
+    var more = document.createElement('div');
+    more.className = 'expand-btn';
+    more.style.cssText = 'font-size:13px;color:var(--accent);cursor:pointer;margin:4px 0 8px;';
+    more.textContent = '展开全文 ▾';
+    more.addEventListener('click', function(){
+      if (desc.dataset.open === '1') {
+        desc.dataset.open = '0';
+        desc.style.cssText = '-webkit-line-clamp:3;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap;';
+        more.textContent = '展开全文 ▾';
+      } else {
+        desc.dataset.open = '1';
+        desc.style.cssText = 'white-space:pre-wrap;';
+        more.textContent = '收起 ▴';
+      }
+    });
+    var imgs = (it.images || []);
+    if (imgs.length) {
+      var imgRow = document.createElement('div');
+      imgRow.className = 'fb-thumbs';
+      imgs.forEach(function(u){
+        var im = document.createElement('img');
+        im.src = u; im.alt = 'shot';
+        im.style.cssText = 'cursor:zoom-in;';
+        im.onclick = function(){ window.open(u, '_blank'); };
+        imgRow.appendChild(im);
+      });
+      card.appendChild(imgRow);
+    }
+    var act = document.createElement('div');
+    act.className = 'fb-actions';
+    var view = document.createElement('button');
+    view.className = 'btn save-btn';
+    view.textContent = '详情';
+    view.addEventListener('click', function(){
+      sessionStorage.setItem('tstfb-detail-from', 'admin');
+      location.hash = '#/detail?id=' + encodeURIComponent(it.id);
+    });
+    var editBtn = document.createElement('button');
+    editBtn.className = 'btn save-btn edit-toggle';
+    editBtn.textContent = '处理 ▾';
+    var editZone = document.createElement('div');
+    editZone.className = 'edit-zone';
+    var sel = document.createElement('select');
+    sel.style.cssText = 'padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px;';
+    [['pending', t('statusPending')], ['doing', t('statusDoing')], ['done', t('statusDone')]].forEach(function(p){
+      var op = document.createElement('option');
+      op.value = p[0];
+      op.textContent = p[1];
+      if (it.status === p[0]) { op.selected = true; }
+      sel.appendChild(op);
+    });
+    var ta = document.createElement('textarea');
+    ta.placeholder = t('adminReplyPh');
+    ta.value = it.reply || '';
+    var save = document.createElement('button');
+    save.className = 'btn save-btn';
+    save.textContent = t('adminSave');
+    save.addEventListener('click', function(){
+      save.disabled = true;
+      adminDoUpdate(it.id, sel.value, ta.value, function(){
+        showToast(t('adminSaved'));
+        save.disabled = false;
+        it.status = sel.value;
+        it.reply = ta.value;
+        renderAdminStats();
+      }, function(){ save.disabled = false; });
+    });
+    editZone.appendChild(sel);
+    editZone.appendChild(ta);
+    editZone.appendChild(save);
+    editBtn.addEventListener('click', function(){
+      card.classList.toggle('editing');
+      editBtn.textContent = card.classList.contains('editing') ? '收起 ▴' : '处理 ▾';
+    });
+    var del = document.createElement('button');
+    del.className = 'btn save-btn';
+    del.textContent = t('adminDelete');
+    del.style.cssText = 'min-height:36px;padding:6px 14px;color:var(--danger);border-color:var(--danger);';
+    del.addEventListener('click', function(){
+      if (!window.confirm(t('adminDeleteConfirm'))) { return; }
+      del.disabled = true;
+      adminDoDelete(it.id, function(){
+        showToast(t('adminDeleted'));
+        delete adminSel[it.id];
+        renderAdminList();
+      }, function(){ del.disabled = false; });
+    });
+    act.appendChild(view);
+    act.appendChild(editBtn);
+    act.appendChild(del);
+    card.appendChild(chk);
+    card.appendChild(head);
+    card.appendChild(desc);
+    card.appendChild(more);
+    card.appendChild(act);
+    card.appendChild(editZone);
+    wrap.appendChild(card);
+  });
+  adminRenderBatch();
+}
+
+function adminBindToolbar(){
+  var tabs = document.getElementById('adminStatusTabs');
+  if (tabs && !tabs.getAttribute('data-bound')) {
+    tabs.setAttribute('data-bound', '1');
+    tabs.addEventListener('click', function(e){
+      var b = e.target;
+      if (!b.classList || !b.classList.contains('tab')) return;
+      adminFilter = b.getAttribute('data-st');
+      Array.prototype.forEach.call(tabs.children, function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      renderAdminCards();
+    });
+  }
+  var search = document.getElementById('adminSearch');
+  if (search && !search.getAttribute('data-bound')) {
+    search.setAttribute('data-bound', '1');
+    search.addEventListener('input', function(){
+      adminSearch = search.value.trim();
+      renderAdminCards();
+    });
+  }
+  var bd = document.getElementById('adminBatchDone');
+  if (bd && !bd.getAttribute('data-bound')) {
+    bd.setAttribute('data-bound', '1');
+    bd.addEventListener('click', function(){
+      var ids = [];
+      for (var k in adminSel) { if (adminSel[k]) ids.push(k); }
+      if (!ids.length) return;
+      if (!window.confirm('确定将选中的 ' + ids.length + ' 条标记为「已处理」？')) return;
+      var pwd = isCloud() ? (sessionStorage.getItem('tstfb-admin-pwd') || '') : '';
+      var todo = ids.slice();
+      function step(){
+        if (!todo.length) {
+          showToast('已批量处理 ' + ids.length + ' 条');
+          adminSel = {};
+          renderAdminList();
+          return;
+        }
+        var id = todo.shift();
+        var run;
+        if (isCloud()) run = callFunction('adminUpdate', { id: id, status: 'done', reply: adminGetReply(id), password: pwd });
+        else run = updateOne(id, { status: 'done', reply: adminGetReply(id) });
+        run.then(step).catch(function(e){
+          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+          else { showToast(t('errCloud')); }
+        });
+      }
+      step();
+    });
+  }
+  var bdl = document.getElementById('adminBatchDelete');
+  if (bdl && !bdl.getAttribute('data-bound')) {
+    bdl.setAttribute('data-bound', '1');
+    bdl.addEventListener('click', function(){
+      var ids = [];
+      for (var k in adminSel) { if (adminSel[k]) ids.push(k); }
+      if (!ids.length) return;
+      if (!window.confirm('确定删除选中的 ' + ids.length + ' 条反馈？删除后不可恢复。')) return;
+      var pwd = isCloud() ? (sessionStorage.getItem('tstfb-admin-pwd') || '') : '';
+      var todo = ids.slice();
+      function step(){
+        if (!todo.length) {
+          showToast('已删除 ' + ids.length + ' 条');
+          adminSel = {};
+          renderAdminList();
+          return;
+        }
+        var id = todo.shift();
+        var run;
+        if (isCloud()) run = callFunction('adminDelete', { id: id, password: pwd });
+        else run = deleteOne(id);
+        run.then(step).catch(function(e){
+          if (e && e.body && e.body.error && /口令/.test(String(e.body.error))) { showToast(t('adminWrong')); }
+          else { showToast(t('errCloud')); }
+        });
+      }
+      step();
+    });
+  }
+  var bc = document.getElementById('adminBatchClear');
+  if (bc && !bc.getAttribute('data-bound')) {
+    bc.setAttribute('data-bound', '1');
+    bc.addEventListener('click', function(){
+      adminSel = {};
+      renderAdminCards();
+    });
+  }
+}
+
+function adminGetReply(id){
+  var it = adminAll.filter(function(x){ return x.id === id; })[0];
+  return (it && it.reply) || '';
 }
 
 /* ================================================================
