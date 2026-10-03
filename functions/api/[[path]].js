@@ -92,6 +92,24 @@ export async function onRequest(context) {
       return new Response(text, { status: res.status, headers: { 'Content-Type': 'application/json', ...corsHeaders(request) } });
     }
 
+    // ===== 调试码验证（后端校验，前端不含码表）=====
+    if (path === '/api/debug/verify' && request.method === 'POST') {
+      const body = await request.json();
+      const code = String((body && body.code) || '').trim().toUpperCase();
+      const table = {
+        'TST-K3M9X7': 'glass',     // 液态玻璃主题
+        'TST-X2W5V8': 'light',     // 浅色主题
+        'TST-Q8N4R2': 'desktop',   // 强制桌面模式
+        'TST-M7Z1P6': 'mobile',    // 强制移动模式
+        'TST-H6D3B9': 'perf',      // 性能面板
+        'TST-F5J8C4': 'dev',       // 开发者信息
+        'TST-R2T7W1': 'reset'      // 清除强制模式
+      };
+      const feature = table[code];
+      if (!feature) return json({ ok: false, error: 'invalid' });
+      return json({ ok: true, feature: feature });
+    }
+
     // ===== 数据库查询 =====
     if (path === '/api/rest/v1/Feedback' && request.method === 'GET') {
       await ensureColumn(env);
