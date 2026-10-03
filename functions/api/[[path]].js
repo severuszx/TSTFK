@@ -307,17 +307,17 @@ function safeParse(str) {
   try { return JSON.parse(str); } catch (e) { return []; }
 }
 
-function json(data, status) {
+function json(data, status, req) {
   return new Response(JSON.stringify(data), {
     status: status || 200,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() }
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(req) }
   });
 }
 
 function corsHeaders(req) {
   const origin = req ? (req.headers.get('Origin') || '') : '';
   const allow = ['https://theslowtide.pages.dev', 'https://theslowtidefk.pages.dev', 'http://localhost', 'http://127.0.0.1', 'null'];
-  const a = allow.includes(origin) ? origin : 'https://theslowtidefk.pages.dev';
+  const a = !origin ? '*' : (allow.includes(origin) ? origin : 'https://theslowtidefk.pages.dev');
   return {
     'Access-Control-Allow-Origin': a,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
