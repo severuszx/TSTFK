@@ -4,6 +4,17 @@
 // 追加评论 append_feedback：D1 内追加文本；管理员口令后端校验
 
 const ADMIN_PASSWORD = 'WYJQQNDYWHM';
+let _migrated = false;
+async function ensureColumn(env) {
+  if (_migrated) return;
+  try {
+    const { results } = await env.DB.prepare('PRAGMA table_info(Feedback)').all();
+    if (!(results || []).some(r => r.name === 'is_public')) {
+      await env.DB.prepare('ALTER TABLE Feedback ADD COLUMN is_public INTEGER DEFAULT 1').run();
+    }
+  } catch (e) {}
+  _migrated = true;
+}
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -31,11 +42,36 @@ export async function onRequest(context) {
       return json({ ok: true });
     }
 
+    // ===== Supabase 代理（运维通道：经 Cloudflare 边缘转发，解决直连不稳定）=====
+    if (path === '/api/rest/v1/proxy' && request.method === 'POST') {
+      const body = await request.json();
+      const up = String(body.up || '');
+      const method = String(body.method || 'POST').toUpperCase();
+      if (!up.startsWith('/rest/v1/')) return json({ error: 'bad_path' }, 400);
+      const key = String(body.key || '');
+      const payload = body.body;
+      const res = await fetch('https://jilcbcodphxpasicjghv.supabase.co' + up, {
+        method: method,
+        headers: {
+          'apikey': key,
+          'Authorization': 'Bearer ' + key,
+          'Content-Type': 'application/json',
+          'Prefer': String(body.prefer || '')
+        },
+        body: payload ? JSON.stringify(payload) : undefined
+      });
+      const text = await res.text();
+      return new Response(text, { status: res.status, headers: { 'Content-Type': 'application/json', ...corsHeaders(request) } });
+    }
+
     // ===== 数据库查询 =====
     if (path === '/api/rest/v1/Feedback' && request.method === 'GET') {
-      const { results } = await env.DB.prepare(
-        'SELECT * FROM Feedback ORDER BY created_at DESC LIMIT 500'
-      ).all();
+      await ensureColumn(env);
+      const isAdmin = url.searchParams.get('admin') === '1' && url.searchParams.get('pw') === ADMIN_PASSWORD;
+      const sql = isAdmin
+        ? 'SELECT * FROM Feedback ORDER BY created_at DESC LIMIT 500'
+        : 'SELECT * FROM Feedback WHERE is_public = 1 ORDER BY created_at DESC LIMIT 500';
+      const { results } = await env.DB.prepare(sql).all();
       const parsed = (results || []).map(parseRow);
       return json(parsed);
     }
@@ -45,9 +81,11 @@ export async function onRequest(context) {
       const body = await request.json();
       const id = crypto.randomUUID();
       const no = body.no || ('TST-' + Date.now().toString(36).toUpperCase());
+      await ensureColumn(env);
+      const isPublic = (body.is_public === false || body.is_public === 'false' || body.is_public === 0 || body.is_public === '0') ? 0 : 1;
       await env.DB.prepare(
-        `INSERT INTO Feedback (id, no, "gameId", type, description, "occurTime", contact, status, reply, images, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        `INSERT INTO Feedback (id, no, "gameId", type, description, "occurTime", contact, status, reply, images, is_public, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       ).bind(
         id, no,
         body.gameId || '',
@@ -56,7 +94,8 @@ export async function onRequest(context) {
         body.occurTime || null,
         body.contact || null,
         'pending', '',
-        JSON.stringify(body.images || [])
+        JSON.stringify(body.images || []),
+        isPublic
       ).run();
       const { results } = await env.DB.prepare('SELECT * FROM Feedback WHERE id = ?').bind(id).all();
       return json(results[0] ? [parseRow(results[0])] : []);
@@ -71,8 +110,8 @@ export async function onRequest(context) {
       if (body.p_action === 'login') return json('ok');
       if (body.p_action === 'update') {
         await env.DB.prepare(
-          'UPDATE Feedback SET status = coalesce(?, status), reply = coalesce(?, reply) WHERE id = ?'
-        ).bind(body.p_status || null, body.p_reply || null, body.p_id).run();
+          'UPDATE Feedback SET status = coalesce(?, status), reply = coalesce(?, reply), is_public = coalesce(?, is_public) WHERE id = ?'
+        ).bind(body.p_status || null, body.p_reply || null, (body.p_is_public === undefined ? null : (body.p_is_public ? 1 : 0)), body.p_id).run();
         return json('ok');
       }
       if (body.p_action === 'delete') {
