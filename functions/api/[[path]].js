@@ -46,20 +46,19 @@ export async function onRequest(context) {
     if (path === '/api/rest/v1/proxy' && request.method === 'POST') {
       const body = await request.json();
       const up = String(body.up || '');
-      const method = String(body.method || 'POST').toUpperCase();
+      const method = String(body.method || 'GET').toUpperCase();
       if (!up.startsWith('/rest/v1/')) return json({ error: 'bad_path' }, 400);
       const key = String(body.key || '');
       const payload = body.body;
-      const res = await fetch('https://jilcbcodphxpasicjghv.supabase.co' + up, {
-        method: method,
-        headers: {
-          'apikey': key,
-          'Authorization': 'Bearer ' + key,
-          'Content-Type': 'application/json',
-          'Prefer': String(body.prefer || '')
-        },
-        body: payload ? JSON.stringify(payload) : undefined
-      });
+      const headers = {
+        'apikey': key,
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'application/json',
+        'Prefer': String(body.prefer || '')
+      };
+      const init = { method: method, headers: headers };
+      if (payload !== undefined && payload !== null) { init.body = JSON.stringify(payload); }
+      const res = await fetch('https://jilcbcodphxpasicjghv.supabase.co' + up, init);
       const text = await res.text();
       return new Response(text, { status: res.status, headers: { 'Content-Type': 'application/json', ...corsHeaders(request) } });
     }
