@@ -120,6 +120,32 @@ export async function onRequest(context) {
       return json('unknown_action');
     }
 
+    // ===== 管理员批量操作（自动化测试反馈治理）=====
+    if (path === '/api/rest/v1/rpc/admin_bulk' && request.method === 'POST') {
+      const body = await request.json();
+      if (body.p_password !== ADMIN_PASSWORD) {
+        return json('wrong_password');
+      }
+      await ensureColumn(env);
+      if (body.p_action === 'set_auto_private') {
+        const r = await env.DB.prepare("UPDATE Feedback SET is_public = 0 WHERE gameId = '自动化程序'").run();
+        return json({ ok: true, changes: r.meta.changes });
+      }
+      if (body.p_action === 'set_auto_done') {
+        const r = await env.DB.prepare("UPDATE Feedback SET status = 'done' WHERE gameId = '自动化程序' AND status != 'done'").run();
+        return json({ ok: true, changes: r.meta.changes });
+      }
+      if (body.p_action === 'delete_auto_done') {
+        const r = await env.DB.prepare("DELETE FROM Feedback WHERE gameId = '自动化程序' AND status = 'done'").run();
+        return json({ ok: true, changes: r.meta.changes });
+      }
+      if (body.p_action === 'list_auto') {
+        const { results } = await env.DB.prepare("SELECT id, no, type, description, status, created_at FROM Feedback WHERE gameId = '自动化程序' ORDER BY created_at DESC").all();
+        return json(results || []);
+      }
+      return json('unknown_action');
+    }
+
     return new Response('Not found', { status: 404 });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
