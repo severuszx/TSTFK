@@ -1591,7 +1591,7 @@ function normalizeItem(o){
     status: o.status || 'pending',
     reply: o.reply || '',
     images: o.images || [],
-    isPublic: o.is_public !== false,
+    isPublic: !(o.is_public === false || o.is_public === 'false' || o.is_public === 0 || o.is_public === '0'),
     createdAt: o.created_at || ''
   };
 }
