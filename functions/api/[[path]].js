@@ -5,6 +5,35 @@
 
 const ADMIN_PASSWORD = 'WYJQQNDYWHM';
 let _migrated = false;
+let _voteMigrated = false;
+
+async function ensureVoteTables(env) {
+  if (_voteMigrated) return;
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vote_topics (id TEXT PRIMARY KEY, title TEXT, options TEXT, active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')))`).run();
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS vote_records (id TEXT PRIMARY KEY, topic_id TEXT, device_id TEXT, ip TEXT, option_idx INTEGER, created_at TEXT DEFAULT (datetime('now')))`).run();
+  } catch (e) {}
+  _voteMigrated = true;
+}
+
+function clientIp(req) {
+  return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || '';
+}
+function deviceId(req) {
+  const f = req.headers.get('X-Device-Id') || '';
+  return (f && f.length >= 8 && f.length <= 80) ? f : '';
+}
+function voteResult(options, rows) {
+  const total = rows.reduce((s, r) => s + r.n, 0) || 0;
+  return {
+    total: total,
+    result: options.map((o, i) => {
+      const c = rows.find(r => r.option_idx === i);
+      const n = c ? c.n : 0;
+      return { id: o.id, label: o.label, count: n, pct: total ? Math.round(n / total * 1000) / 10 : 0 };
+    })
+  };
+}
 async function ensureColumn(env) {
   if (_migrated) return;
   try {
@@ -142,6 +171,99 @@ export async function onRequest(context) {
       if (body.p_action === 'list_auto') {
         const { results } = await env.DB.prepare("SELECT id, no, type, description, status, created_at FROM Feedback WHERE gameId = '自动化程序' ORDER BY created_at DESC").all();
         return json(results || []);
+      }
+      return json('unknown_action');
+    }
+
+    // ===== 投票：状态查询（未投不给占比；已投返回占比）=====
+    if (path === '/api/vote/state' && request.method === 'GET') {
+      await ensureVoteTables(env);
+      const topic = String(url.searchParams.get('topic') || 'default');
+      const top = await env.DB.prepare('SELECT * FROM vote_topics WHERE id = ?').bind(topic).first();
+      if (!top) return json({ error: 'not_found' }, 404);
+      const options = safeParse(top.options) || [];
+      const ip = clientIp(request);
+      const dev = deviceId(request);
+      const rec = await env.DB.prepare('SELECT * FROM vote_records WHERE topic_id = ? AND (ip = ? OR (device_id != "" AND device_id = ?)) ORDER BY created_at DESC LIMIT 1')
+        .bind(topic, ip, dev).first();
+      const out = { id: top.id, title: top.title, options: options.map(o => ({ id: o.id, label: o.label })), active: !!top.active, voted: !!rec, myOption: rec ? rec.option_idx : null };
+      if (rec) {
+        const rows = await env.DB.prepare('SELECT option_idx, COUNT(*) n FROM vote_records WHERE topic_id = ? GROUP BY option_idx').bind(topic).all();
+        out.voteResult = voteResult(options, rows.results || []);
+      }
+      return json(out);
+    }
+
+    // ===== 投票：提交（设备+IP 双重防重复；一个设备只能投一次）=====
+    if (path === '/api/vote/submit' && request.method === 'POST') {
+      await ensureVoteTables(env);
+      const body = await request.json();
+      const topic = String((body && body.topic) || 'default');
+      const optionIdx = Number(body && body.option);
+      const top = await env.DB.prepare('SELECT * FROM vote_topics WHERE id = ? AND active = 1').bind(topic).first();
+      if (!top) return json({ error: 'not_found' }, 404);
+      const options = safeParse(top.options) || [];
+      if (!(optionIdx >= 0 && optionIdx < options.length)) return json({ error: 'bad_option' }, 400);
+      const ip = clientIp(request);
+      const dev = deviceId(request);
+      const dup = await env.DB.prepare('SELECT id FROM vote_records WHERE topic_id = ? AND (ip = ? OR (device_id != "" AND device_id = ?)) LIMIT 1').bind(topic, ip, dev).first();
+      if (dup) return json({ error: 'already_voted' });
+      const id = crypto.randomUUID();
+      await env.DB.prepare('INSERT INTO vote_records (id, topic_id, device_id, ip, option_idx) VALUES (?, ?, ?, ?, ?)').bind(id, topic, dev, ip, optionIdx).run();
+      const rows = await env.DB.prepare('SELECT option_idx, COUNT(*) n FROM vote_records WHERE topic_id = ? GROUP BY option_idx').bind(topic).all();
+      const vr = voteResult(options, rows.results || []);
+      return json({ ok: true, myOption: optionIdx, total: vr.total, result: vr.result });
+    }
+
+    // ===== 投票：管理员（编辑题目/选项、重置、删除、启停、结果）=====
+    if (path === '/api/vote/admin' && request.method === 'POST') {
+      const body = await request.json();
+      if (!body || body.p_password !== ADMIN_PASSWORD) {
+        return json('wrong_password');
+      }
+      await ensureVoteTables(env);
+      const act = body.p_action;
+      if (act === 'list') {
+        const { results } = await env.DB.prepare('SELECT * FROM vote_topics ORDER BY created_at DESC').all();
+        const out = [];
+        for (const t of (results || [])) {
+          const cnt = await env.DB.prepare('SELECT COUNT(*) n FROM vote_records WHERE topic_id = ?').bind(t.id).first();
+          out.push({ id: t.id, title: t.title, options: safeParse(t.options), active: !!t.active, votes: cnt.n });
+        }
+        return json(out);
+      }
+      if (act === 'save') {
+        const id = String(body.id || '').trim() || ('vote-' + Date.now().toString(36));
+        const title = String(body.title || '').trim();
+        const opts = Array.isArray(body.options)
+          ? body.options.map((o, i) => ({ id: i, label: String((o && o.label) || '').trim() })).filter(o => o.label)
+          : [];
+        if (!title || !opts.length) return json({ error: 'bad_params' }, 400);
+        await env.DB.prepare('INSERT INTO vote_topics (id, title, options, active) VALUES (?, ?, ?, 1) ON CONFLICT(id) DO UPDATE SET title = excluded.title, options = excluded.options')
+          .bind(id, title, JSON.stringify(opts)).run();
+        return json({ ok: true, id: id });
+      }
+      if (act === 'delete_topic') {
+        await env.DB.prepare('DELETE FROM vote_records WHERE topic_id = ?').bind(String(body.id || '')).run();
+        await env.DB.prepare('DELETE FROM vote_topics WHERE id = ?').bind(String(body.id || '')).run();
+        return json({ ok: true });
+      }
+      if (act === 'clear_records') {
+        await env.DB.prepare('DELETE FROM vote_records WHERE topic_id = ?').bind(String(body.id || '')).run();
+        return json({ ok: true });
+      }
+      if (act === 'toggle_active') {
+        await env.DB.prepare('UPDATE vote_topics SET active = CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id = ?').bind(String(body.id || '')).run();
+        return json({ ok: true });
+      }
+      if (act === 'result') {
+        const topic = String(body.id || '');
+        const top = await env.DB.prepare('SELECT * FROM vote_topics WHERE id = ?').bind(topic).first();
+        if (!top) return json({ error: 'not_found' }, 404);
+        const options = safeParse(top.options) || [];
+        const rows = await env.DB.prepare('SELECT option_idx, COUNT(*) n FROM vote_records WHERE topic_id = ? GROUP BY option_idx').bind(topic).all();
+        const vr = voteResult(options, rows.results || []);
+        return json({ id: top.id, title: top.title, options: options, active: !!top.active, total: vr.total, result: vr.result });
       }
       return json('unknown_action');
     }
