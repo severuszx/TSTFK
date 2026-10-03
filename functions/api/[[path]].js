@@ -19,8 +19,9 @@ async function ensureVoteTables(env) {
 function clientIp(req) {
   return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || '';
 }
-function deviceId(req) {
-  const f = req.headers.get('X-Device-Id') || '';
+function deviceId(req, url) {
+  const q = url ? (url.searchParams.get('dev') || '') : '';
+  const f = q || (req.headers.get('X-Device-Id') || '');
   return (f && f.length >= 8 && f.length <= 80) ? f : '';
 }
 function voteResult(options, rows) {
@@ -201,7 +202,7 @@ export async function onRequest(context) {
       if (!top) return json({ error: 'not_found' }, 404);
       const options = safeParse(top.options) || [];
       const ip = clientIp(request);
-      const dev = deviceId(request);
+      const dev = deviceId(request, url);
       const rec = await env.DB.prepare('SELECT * FROM vote_records WHERE topic_id = ? AND (ip = ? OR (device_id != "" AND device_id = ?)) ORDER BY created_at DESC LIMIT 1')
         .bind(topic, ip, dev).first();
       const out = { id: top.id, title: top.title, options: options.map(o => ({ id: o.id, label: o.label })), active: !!top.active, voted: !!rec, myOption: rec ? rec.option_idx : null };
@@ -223,7 +224,7 @@ export async function onRequest(context) {
       const options = safeParse(top.options) || [];
       if (!(optionIdx >= 0 && optionIdx < options.length)) return json({ error: 'bad_option' }, 400);
       const ip = clientIp(request);
-      const dev = deviceId(request);
+      const dev = deviceId(request, url);
       const dup = await env.DB.prepare('SELECT id FROM vote_records WHERE topic_id = ? AND (ip = ? OR (device_id != "" AND device_id = ?)) LIMIT 1').bind(topic, ip, dev).first();
       if (dup) return json({ error: 'already_voted' });
       const id = crypto.randomUUID();
