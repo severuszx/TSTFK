@@ -400,6 +400,47 @@ html[data-theme="dark"] .btn.primary{background:#71717a;border-color:#71717a;}
   .logo{font-size:17px;}
   .card{padding:14px;}
 }
+@media(max-width:720px){
+  .container{padding:0 12px;}
+  .main-nav{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .main-nav::-webkit-scrollbar{display:none;}
+  .nav-link{white-space:nowrap;padding:7px 10px;font-size:13px;}
+  .header-right{gap:6px;}
+  .section{padding:14px 0;}
+  .section-title{font-size:16px;}
+  .card,.fb-card{padding:12px;border-radius:14px;}
+  .fb-head{flex-wrap:wrap;gap:6px;}
+  .fb-no{font-size:12px;}
+  .fb-time{font-size:11px;}
+  .fb-desc,.detail-body{font-size:14px;line-height:1.7;}
+  .fb-thumbs{flex-wrap:wrap;gap:6px;}
+  .form-item{margin-bottom:12px;}
+  .form-label{font-size:13px;margin-bottom:6px;}
+  .list-toolbar{flex-wrap:wrap;gap:8px;}
+  .btn{min-height:42px;font-size:14px;border-radius:12px;}
+  .btn-row{flex-wrap:wrap;gap:8px;}
+  .btn-row .btn{flex:1;min-width:calc(50% - 4px);}
+  .gallery{grid-template-columns:repeat(3,1fr);gap:6px;}
+  .gallery img{border-radius:10px;}
+  .lightbox .gallery{grid-template-columns:repeat(3,1fr);}
+  .save-btn{width:100%;}
+  .admin-tabs{overflow-x:auto;display:flex;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .admin-tabs::-webkit-scrollbar{display:none;}
+  .admin-tab{white-space:nowrap;padding:8px 12px;font-size:13px;}
+  .admin-toolbar,.admin-batch{flex-wrap:wrap;gap:8px;}
+  .admin-stats{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .stat{padding:10px;}
+  .reply-box{padding:10px;}
+  .reply-text{font-size:13px;}
+  .footer-grid{grid-template-columns:1fr;gap:12px;}
+  .footer-bottom{flex-wrap:wrap;gap:8px;font-size:11px;padding:14px 12px;}
+  .tip-msg{font-size:12px;padding:8px 10px;}
+  .desc-count{font-size:11px;right:10px;bottom:8px;}
+  .img-upload{padding:10px;}
+  .db-title{font-size:14px;}
+  .db-desc{font-size:12px;}
+  .db-btns button{min-height:40px;font-size:13px;}
+}
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important;}
 }
