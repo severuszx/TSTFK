@@ -1110,6 +1110,35 @@ html[data-theme="glass"] .results-box,
 html[data-theme="glass"] .hero-slider-wrap,
 html[data-theme="glass"] .notice-card{background:rgba(255,255,255,.3);backdrop-filter:blur(24px) saturate(220%);border:1px solid rgba(255,255,255,.55);}
 html[data-theme="glass"] .search-row input{color:#1f2937;}
+
+/* ===== 移动端适配（独立手机布局）===== */
+@media(max-width:720px){
+  .container{padding:0 14px;}
+  .site-header .logo{transform:scale(.92);transform-origin:left center;}
+  .header-inner{gap:8px;flex-wrap:wrap;}
+  .nav{width:100%;order:3;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:6px;padding:6px 0;}
+  .nav .nav-link{font-size:14px;padding:10px 12px;min-height:44px;white-space:nowrap;}
+  .card{padding:16px 14px;border-radius:12px;}
+  .section-title{font-size:18px;}
+  .form-item{margin-bottom:14px;}
+  .form-label{font-size:14px;margin-bottom:6px;}
+  input[type=text],input[type=password],input[type=search],textarea{font-size:16px;padding:12px;border-radius:8px;}
+  .btn{width:100%;min-height:48px;font-size:16px;border-radius:10px;}
+  .btn-row{flex-direction:column;gap:10px;}
+  .btn-row .btn{margin:0;}
+  .feedback-card{padding:14px;border-radius:12px;}
+  .admin-toolbar{flex-direction:column;gap:10px;}
+  .admin-tabs{overflow-x:auto;white-space:nowrap;padding-bottom:4px;}
+  .admin-tabs .tab{min-height:40px;padding:8px 14px;font-size:14px;}
+  .admin-stats{font-size:13px;flex-wrap:wrap;}
+  .admin-list .item{padding:14px;border-radius:12px;gap:8px;}
+  .hero-slider-wrap{height:180px;}
+  .notice-card,.suggest-box,.results-box{padding:14px;border-radius:12px;}
+  .footer{font-size:12px;padding:16px 0;}
+  .tip-msg{font-size:13px;}
+  .tag{font-size:12px;padding:4px 10px;}
+  .vote-option{min-height:48px;font-size:15px;}
+}
 </style>
 </head>
 <body>
@@ -2185,7 +2214,7 @@ function renderAdminList(){
   // 管理员模式走管理员通道（带 admin=1&pw），返回全部反馈含私密；普通通道只返回公开
   if (isAdmin && isCloud()) {
     var pwd = sessionStorage.getItem('tstfb-admin-pwd') || '';
-    fetch('/rest/v1/Feedback?select=*&order=created_at.desc&limit=500&admin=1&pw=' + encodeURIComponent(pwd), { headers: cloudHeaders() })
+    fetch(SUPABASE.url + '/rest/v1/Feedback?select=*&order=created_at.desc&limit=500&admin=1&pw=' + encodeURIComponent(pwd), { headers: cloudHeaders() })
       .then(function(r){ if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
       .then(function(all){
         adminAll = (all || []).map(normalizeItem);
