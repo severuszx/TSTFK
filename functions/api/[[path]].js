@@ -104,7 +104,8 @@ export async function onRequest(context) {
         'TST-M7Z1P6': 'mobile',    // 强制移动模式
         'TST-H6D3B9': 'perf',      // 性能面板
         'TST-F5J8C4': 'dev',       // 开发者信息
-        'TST-R2T7W1': 'reset'      // 清除强制模式
+        'TST-R2T7W1': 'reset',     // 清除强制模式
+        'TST-G4N7QX': 'bench3d'    // 3D 性能渲染测试
       };
       const feature = table[code];
       if (!feature) return json({ ok: false, error: 'invalid' });
