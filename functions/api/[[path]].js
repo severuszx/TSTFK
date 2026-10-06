@@ -105,7 +105,8 @@ export async function onRequest(context) {
         'TST-H6D3B9': 'perf',      // 性能面板
         'TST-F5J8C4': 'dev',       // 开发者信息
         'TST-R2T7W1': 'reset',     // 清除强制模式
-        'TST-G4N7QX': 'bench3d'    // 3D 性能渲染测试
+        'TST-G4N7QX': 'bench3d',   // 3D 性能渲染测试
+        'TST-7KQ2WP': 'chat'       // 聊天室（官网↔游戏互通，内测）
       };
       const feature = table[code];
       if (!feature) return json({ ok: false, error: 'invalid' });
@@ -332,6 +333,89 @@ export async function onRequest(context) {
         }
       } catch (e) {}
       _toolsReady = true;
+    }
+
+
+    // ===== 聊天桥 + 服务器状态（官网 ↔ 游戏）=====
+    const BRIDGE_TOKEN = 'TST-BRIDGE-SLOWTIDE-2026';
+    let _chatMigrated = false;
+    async function ensureChatTables(env) {
+      if (_chatMigrated) return;
+      try {
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS chat_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, message TEXT, kind TEXT, ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS out_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, status TEXT DEFAULT 'pending', ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS server_status (id INTEGER PRIMARY KEY AUTOINCREMENT, online INTEGER, max INTEGER, latency INTEGER, players TEXT, ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
+      } catch (e) {}
+      _chatMigrated = true;
+    }
+    function bridgeOk(req) {
+      return String(req.headers.get('x-bridge-token') || '') === BRIDGE_TOKEN;
+    }
+
+    // 游戏侧插件推送聊天（带 token 校验 + 10 秒去重）
+    if (path === '/api/chat/receive' && request.method === 'POST') {
+      if (!bridgeOk(request)) return json({ error: 'bad_token' }, 401);
+      const b = await request.json();
+      const sender = String(b.sender || '').trim().slice(0, 40);
+      const message = String(b.message || '').trim().slice(0, 200);
+      if (!sender || !message) return json({ error: 'need_fields' }, 400);
+      await ensureChatTables(env);
+      const dup = await env.DB.prepare("SELECT id FROM chat_logs WHERE sender = ? AND message = ? AND ts > datetime('now','+8 hours','-10 seconds') LIMIT 1").bind(sender, message).first();
+      if (!dup) {
+        await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES (?,?,?)").bind(sender, message, 'game').run();
+      }
+      return json({ ok: true });
+    }
+
+    // 官网发消息：写入聊天记录 + 进入待发队列
+    if (path === '/api/chat/send' && request.method === 'POST') {
+      const b = await request.json();
+      const message = String(b.message || '').trim().slice(0, 200);
+      if (!message) return json({ error: 'empty' }, 400);
+      await ensureChatTables(env);
+      await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES ('官网',?,'web')").bind(message).run();
+      await env.DB.prepare("INSERT INTO out_msgs (text,status) VALUES (?, 'pending')").bind(message).run();
+      return json({ ok: true });
+    }
+
+    // 聊天历史（增量拉取）
+    if (path === '/api/chat/history' && request.method === 'GET') {
+      await ensureChatTables(env);
+      const after = Number(url.searchParams.get('after') || 0) || 0;
+      const rows = await env.DB.prepare('SELECT id, sender, message, kind, ts FROM chat_logs WHERE id > ? ORDER BY id ASC LIMIT 200').bind(after).all();
+      return json({ messages: (rows.results || []).map(r => ({ id:r.id, sender:r.sender, message:r.message, kind:r.kind, ts:r.ts })) });
+    }
+
+    // 插件取件：发给游戏的消息（取走即标记 sent）
+    if (path === '/api/chat/pending' && request.method === 'GET') {
+      if (!bridgeOk(request)) return json({ error: 'bad_token' }, 401);
+      await ensureChatTables(env);
+      const rows = await env.DB.prepare("SELECT * FROM out_msgs WHERE status = 'pending' ORDER BY id ASC LIMIT 20").all();
+      const ids = (rows.results || []).map(r => r.id);
+      if (ids.length) {
+        const ph = ids.map(() => '?').join(',');
+        await env.DB.prepare(`UPDATE out_msgs SET status = 'sent' WHERE id IN (${ph})`).bind(...ids).run();
+      }
+      return json({ messages: (rows.results || []).map(r => ({ id:r.id, text:r.text })) });
+    }
+
+    // 机器人上报服务器状态
+    if (path === '/api/server-status/report' && request.method === 'POST') {
+      if (!bridgeOk(request)) return json({ error: 'bad_token' }, 401);
+      const b = await request.json();
+      await ensureChatTables(env);
+      await env.DB.prepare('INSERT INTO server_status (online, max, latency, players) VALUES (?,?,?,?)')
+        .bind(Math.max(0, Number(b.online) || 0), Math.max(0, Number(b.max) || 0), Math.max(0, Number(b.latency) || 0), JSON.stringify(Array.isArray(b.players) ? b.players.slice(0, 50) : [])).run();
+      await env.DB.prepare("DELETE FROM server_status WHERE id NOT IN (SELECT id FROM server_status ORDER BY id DESC LIMIT 30)").run();
+      return json({ ok: true });
+    }
+
+    // 前端查询状态
+    if (path === '/api/server-status' && request.method === 'GET') {
+      await ensureChatTables(env);
+      const row = await env.DB.prepare('SELECT * FROM server_status ORDER BY id DESC LIMIT 1').first();
+      if (!row) return json({ status: 'offline', online: 0, max: 0, latency: 0, players: [], ts: null });
+      return json({ status: 'online', online: row.online, max: row.max, latency: row.latency, players: JSON.parse(row.players || '[]'), ts: row.ts });
     }
 
     // 查询禁用物品
