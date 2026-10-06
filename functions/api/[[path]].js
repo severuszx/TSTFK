@@ -336,20 +336,35 @@ export async function onRequest(context) {
     }
 
 
-    // ===== 聊天桥 + 服务器状态（官网 ↔ 游戏）=====
+
+    // ===== 聊天桥 + 服务器状态（官网 ↔ 游戏）v2 =====
     const BRIDGE_TOKEN = 'TST-BRIDGE-SLOWTIDE-2026';
     let _chatMigrated = false;
     async function ensureChatTables(env) {
       if (_chatMigrated) return;
       try {
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS chat_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, message TEXT, kind TEXT, ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
-        await env.DB.prepare("CREATE TABLE IF NOT EXISTS out_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, status TEXT DEFAULT 'pending', ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS out_msgs (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT DEFAULT 'msg', sender TEXT DEFAULT '', text TEXT, result TEXT, status TEXT DEFAULT 'pending', ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
         await env.DB.prepare("CREATE TABLE IF NOT EXISTS server_status (id INTEGER PRIMARY KEY AUTOINCREMENT, online INTEGER, max INTEGER, latency INTEGER, players TEXT, ts TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','+8 hours')))").run();
+        // 兼容旧表结构
+        try { await env.DB.prepare("ALTER TABLE out_msgs ADD COLUMN kind TEXT DEFAULT 'msg'").run(); } catch (e) {}
+        try { await env.DB.prepare("ALTER TABLE out_msgs ADD COLUMN sender TEXT DEFAULT ''").run(); } catch (e) {}
+        try { await env.DB.prepare("ALTER TABLE out_msgs ADD COLUMN result TEXT").run(); } catch (e) {}
       } catch (e) {}
       _chatMigrated = true;
     }
     function bridgeOk(req) {
       return String(req.headers.get('x-bridge-token') || '') === BRIDGE_TOKEN;
+    }
+
+    // 指令特征检测：用于拒绝玩家借官网广播指令内容
+    const CMD_WORDS = ['op','deop','give','gamemode','gamerule','effect','enchant','xp','kick','ban','pardon','whitelist','execute','fill','clone','setblock','summon','tp','teleport','title','scoreboard','tag','team','kill','clear','difficulty','weather','tickingarea','function','structure','locate','testfor','testforblock','playsound','stopsound','spreadplayers','setworldspawn','defaultgamemode','save','stop','reload','list','seed','say','me','spawnpoint','wsserver','crash','tps','time','set'];
+    function looksLikeCmd(t) {
+      const s = String(t || '').trim();
+      if (!s) return false;
+      if (s.startsWith('/')) return true;
+      const m = /^([a-zA-Z]+)/.exec(s);
+      return !!(m && CMD_WORDS.indexOf(m[1].toLowerCase()) >= 0);
     }
 
     // 游戏侧插件推送聊天（带 token 校验 + 10 秒去重）
@@ -367,14 +382,16 @@ export async function onRequest(context) {
       return json({ ok: true });
     }
 
-    // 官网发消息：写入聊天记录 + 进入待发队列
+    // 官网发消息：带发言人昵称，写入聊天记录 + 进入待发队列
     if (path === '/api/chat/send' && request.method === 'POST') {
       const b = await request.json();
       const message = String(b.message || '').trim().slice(0, 200);
+      const sender = String(b.sender || '官网').trim().slice(0, 24) || '官网';
       if (!message) return json({ error: 'empty' }, 400);
+      if (looksLikeCmd(message)) return json({ error: 'command_blocked', msg: '消息包含指令内容，已被拒绝发送' }, 400);
       await ensureChatTables(env);
-      await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES ('官网',?,'web')").bind(message).run();
-      await env.DB.prepare("INSERT INTO out_msgs (text,status) VALUES (?, 'pending')").bind(message).run();
+      await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES (?,?,?)").bind(sender, message, 'web').run();
+      await env.DB.prepare("INSERT INTO out_msgs (kind,sender,text,status) VALUES ('msg',?,?, 'pending')").bind(sender, message).run();
       return json({ ok: true });
     }
 
@@ -386,7 +403,7 @@ export async function onRequest(context) {
       return json({ messages: (rows.results || []).map(r => ({ id:r.id, sender:r.sender, message:r.message, kind:r.kind, ts:r.ts })) });
     }
 
-    // 插件取件：发给游戏的消息（取走即标记 sent）
+    // 插件取件：发给游戏的消息/指令（取走即标记 sent）
     if (path === '/api/chat/pending' && request.method === 'GET') {
       if (!bridgeOk(request)) return json({ error: 'bad_token' }, 401);
       await ensureChatTables(env);
@@ -396,7 +413,35 @@ export async function onRequest(context) {
         const ph = ids.map(() => '?').join(',');
         await env.DB.prepare(`UPDATE out_msgs SET status = 'sent' WHERE id IN (${ph})`).bind(...ids).run();
       }
-      return json({ messages: (rows.results || []).map(r => ({ id:r.id, text:r.text })) });
+      return json({ messages: (rows.results || []).map(r => ({ id:r.id, kind:r.kind, sender:r.sender, text:r.text })) });
+    }
+
+    // 管理员指令：校验管理密码，进入待执行队列
+    if (path === '/api/chat/cmd' && request.method === 'POST') {
+      const b = await request.json();
+      if (!b || b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      const cmd = String(b.cmd || '').trim().slice(0, 200);
+      if (!cmd) return json({ error: 'empty' }, 400);
+      await ensureChatTables(env);
+      await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES ('管理员',?,'sys')").bind('下发指令：' + cmd).run();
+      await env.DB.prepare("INSERT INTO out_msgs (kind,sender,text,status) VALUES ('cmd','管理员',?, 'pending')").bind(cmd).run();
+      return json({ ok: true });
+    }
+
+    // 机器人回传指令执行结果（带 token）
+    if (path === '/api/chat/cmd-result' && request.method === 'POST') {
+      if (!bridgeOk(request)) return json({ error: 'bad_token' }, 401);
+      const b = await request.json();
+      const id = Number(b.id || 0);
+      const result = String(b.result || '').slice(0, 500);
+      await ensureChatTables(env);
+      if (id) {
+        await env.DB.prepare("UPDATE out_msgs SET status='done', result=? WHERE id=? AND kind='cmd'").bind(result, id).run();
+      }
+      if (result.trim()) {
+        await env.DB.prepare("INSERT INTO chat_logs (sender,message,kind) VALUES ('机器人',?,'sys')").bind(result.slice(0, 200)).run();
+      }
+      return json({ ok: true });
     }
 
     // 机器人上报服务器状态
