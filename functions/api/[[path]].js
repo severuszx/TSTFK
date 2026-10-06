@@ -288,6 +288,112 @@ export async function onRequest(context) {
       return json('unknown_action');
     }
 
+
+    // ===== 服务器工具：禁用物品 + 任务查询（D1，自动建表+种子）=====
+    let _toolsReady = false;
+    async function ensureToolsTables(env) {
+      if (_toolsReady) return;
+      try {
+        await env.DB.prepare('CREATE TABLE IF NOT EXISTS ban_items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, en_id TEXT, special TEXT, note TEXT, created_at TEXT)').run();
+        await env.DB.prepare('CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, chapter TEXT, title TEXT, target TEXT, status TEXT, created_at TEXT)').run();
+        const r = await env.DB.prepare('SELECT COUNT(*) AS c FROM ban_items').first();
+        if (!r || !r.c) {
+          const SEED_ITEMS = [
+            ['发射器','dispenser','全部','防止高频红石与刷物'],
+            ['末地水晶','end_crystal','全部','禁止破坏末地公共设施或恶意使用'],
+            ['TNT','tnt','全部','防止炸毁地形与恶意破坏'],
+            ['苔光菇铲','','全部','模组物品，禁止持有使用'],
+            ['投掷器','dropper','全部','与发射器同理，防止高频刷物'],
+            ['收纳袋','bundle','全部','防复制/高频交互类'],
+            ['末地传送门框架','end_portal_frame','全部','禁止在生存模式放置，防漏洞利用'],
+            ['末地游行杖','','全部','模组物品，禁止持有使用'],
+            ['活塞','piston','全部','防止高频红石与卡顿设备'],
+            ['漏斗','hopper','全部','防止高频红石与刷物'],
+            ['基岩','bedrock','全部','禁止持有使用，防破坏边界'],
+            ['苔光菇圣锤','','全部','模组物品，禁止持有使用'],
+            ['苔光菇镐','','全部','模组物品，禁止持有使用'],
+            ['黏性活塞','sticky_piston','全部','防止高频红石与卡顿设备']
+          ];
+          for (const it of SEED_ITEMS) {
+            await env.DB.prepare("INSERT INTO ban_items (name,en_id,special,note,created_at) VALUES (?,?,?,?,datetime('now'))").bind(it[0],it[1],it[2],it[3]).run();
+          }
+        }
+        const r2 = await env.DB.prepare('SELECT COUNT(*) AS c FROM tasks').first();
+        if (!r2 || !r2.c) {
+          const SEED_TASKS = [
+            ['第一章 | 潮起','潮汐新生','首次登录服务器，累计在线≥5分钟','已领奖 · 目标完成 2/2'],
+            ['第一章 | 潮起','长夜安然','提交一张床，累计在线时间≥15分钟','进行中 · 目标完成 1/2'],
+            ['第一章 | 潮起','伐木启始','采集16块原木，累计在线时间≥10分钟','已领奖 · 目标完成 2/2'],
+            ['第一章 | 潮起','完成第一章','提交泥土 0/1，前置已完成 1/2，全部完成后解锁','未解锁']
+          ];
+          for (const t of SEED_TASKS) {
+            await env.DB.prepare("INSERT INTO tasks (chapter,title,target,status,created_at) VALUES (?,?,?,?,datetime('now'))").bind(t[0],t[1],t[2],t[3]).run();
+          }
+        }
+      } catch (e) {}
+      _toolsReady = true;
+    }
+
+    // 查询禁用物品
+    if (path === '/api/tools/items' && request.method === 'GET') {
+      await ensureToolsTables(env);
+      const q = String(url.searchParams.get('q') || '').trim();
+      let rows;
+      if (q) {
+        rows = await env.DB.prepare('SELECT * FROM ban_items WHERE name LIKE ? OR en_id LIKE ? ORDER BY id').bind('%'+q+'%','%'+q+'%').all();
+      } else {
+        rows = await env.DB.prepare('SELECT * FROM ban_items ORDER BY id').all();
+      }
+      return json((rows.results || []).map(r => ({ id:r.id, name:r.name, en_id:r.en_id||'', special:r.special||'全部', note:r.note||'' })));
+    }
+
+    // 查询任务
+    if (path === '/api/tools/tasks' && request.method === 'GET') {
+      await ensureToolsTables(env);
+      const q = String(url.searchParams.get('q') || '').trim();
+      let rows;
+      if (q) {
+        rows = await env.DB.prepare('SELECT * FROM tasks WHERE chapter LIKE ? OR title LIKE ? OR target LIKE ? ORDER BY id').bind('%'+q+'%','%'+q+'%','%'+q+'%').all();
+      } else {
+        rows = await env.DB.prepare('SELECT * FROM tasks ORDER BY id').all();
+      }
+      return json((rows.results || []).map(r => ({ id:r.id, chapter:r.chapter||'', title:r.title||'', target:r.target||'', status:r.status||'' })));
+    }
+
+    // 新增禁用物品（管理员）
+    if (path === '/api/tools/item' && request.method === 'POST') {
+      const b = await request.json();
+      if (b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await ensureToolsTables(env);
+      const name = String(b.name || '').trim();
+      if (!name) return json({ error: 'need_name' }, 400);
+      await env.DB.prepare("INSERT INTO ban_items (name,en_id,special,note,created_at) VALUES (?,?,?,?,datetime('now'))").bind(name, String(b.en_id||'').trim(), String(b.special||'全部').trim(), String(b.note||'').trim()).run();
+      return json({ ok: true });
+    }
+    if (path === '/api/tools/item_del' && request.method === 'POST') {
+      const b = await request.json();
+      if (b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await env.DB.prepare('DELETE FROM ban_items WHERE id = ?').bind(Number(b.id) || 0).run();
+      return json({ ok: true });
+    }
+
+    // 新增任务（管理员）
+    if (path === '/api/tools/task' && request.method === 'POST') {
+      const b = await request.json();
+      if (b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await ensureToolsTables(env);
+      const title = String(b.title || '').trim();
+      if (!title) return json({ error: 'need_title' }, 400);
+      await env.DB.prepare("INSERT INTO tasks (chapter,title,target,status,created_at) VALUES (?,?,?,?,datetime('now'))").bind(String(b.chapter||'').trim(), title, String(b.target||'').trim(), String(b.status||'').trim()).run();
+      return json({ ok: true });
+    }
+    if (path === '/api/tools/task_del' && request.method === 'POST') {
+      const b = await request.json();
+      if (b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(Number(b.id) || 0).run();
+      return json({ ok: true });
+    }
+
     return new Response('Not found', { status: 404 });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
