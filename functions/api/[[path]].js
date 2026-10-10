@@ -16,6 +16,26 @@ async function ensureVoteTables(env) {
   _voteMigrated = true;
 }
 
+// 访问量统计：site_visits 表（D1 自动建表）
+let _visitMigrated = false;
+async function ensureVisitTable(env) {
+  if (_visitMigrated) return;
+  try {
+    await env.DB.prepare(`CREATE TABLE IF NOT EXISTS site_visits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ts TEXT DEFAULT (datetime('now')),
+      vdate TEXT,
+      path TEXT,
+      ref TEXT,
+      ua TEXT,
+      ip TEXT,
+      device_id TEXT
+    )`).run();
+  } catch (e) {}
+  _visitMigrated = true;
+}
+const VISIT_IP_MAP = new Map(); // ip -> 秒级时间戳，5 秒限频防刷
+
 function clientIp(req) {
   return req.headers.get('CF-Connecting-IP') || req.headers.get('X-Forwarded-For') || '';
 }
@@ -463,6 +483,197 @@ export async function onRequest(context) {
       return json({ status: 'online', online: row.online, max: row.max, latency: row.latency, players: JSON.parse(row.players || '[]'), ts: row.ts });
     }
 
+    // ===== 玩家自由发帖（PC 端 · 内测卡密）=====
+    let _postsMigrated = false;
+    async function ensurePostsTables(env) {
+      if (_postsMigrated) return;
+      try {
+        await env.DB.prepare(`CREATE TABLE IF NOT EXISTS posts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT, content TEXT, tags TEXT, card TEXT,
+          device_id TEXT, ip TEXT, pinned INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT (datetime('now'))
+        )`).run();
+        await env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_likes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          post_id INTEGER, device_id TEXT, ip TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )`).run();
+        await env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_comments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          post_id INTEGER, name TEXT, content TEXT,
+          created_at TEXT DEFAULT (datetime('now'))
+        )`).run();
+        await env.DB.prepare(`CREATE TABLE IF NOT EXISTS post_cards (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          card TEXT UNIQUE, used INTEGER DEFAULT 0, post_id INTEGER,
+          created_at TEXT DEFAULT (datetime('now')), used_at TEXT
+        )`).run();
+      } catch (e) {}
+      _postsMigrated = true;
+    }
+    const POST_CARD_RE = /^TSTP-[A-Z0-9]{8,12}$/;
+    function genPostCard() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let s = '';
+      for (let i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];
+      return 'TSTP-' + s;
+    }
+    const COMMENT_IP_MAP = new Map(); // ip -> 秒级时间戳（10 秒限频）
+
+    // 帖子列表（含点赞数/评论数/当前设备是否已赞）
+    if (path === '/api/posts/list' && request.method === 'GET') {
+      await ensurePostsTables(env);
+      const sort = String(url.searchParams.get('sort') || 'new');
+      const dev = deviceId(request, url);
+      const ip = clientIp(request);
+      const rows = await env.DB.prepare(
+        'SELECT p.*, (SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) likes, (SELECT COUNT(*) FROM post_comments c WHERE c.post_id=p.id) comments FROM posts p'
+      ).all();
+      let list = (rows.results || []).map(r => ({ id: r.id, name: r.name, content: r.content, tags: r.tags || '', card: r.card || '', pinned: !!r.pinned, likes: r.likes, comments: r.comments, created_at: r.created_at }));
+      if (sort === 'hot') {
+        list.sort((a, b) => (b.likes * 3 + b.comments) - (a.likes * 3 + a.comments));
+      } else {
+        list.sort((a, b) => (b.pinned - a.pinned) || String(b.created_at).localeCompare(String(a.created_at)));
+      }
+      let likedIds = [];
+      if (dev || ip) {
+        const lk = await env.DB.prepare('SELECT post_id FROM post_likes WHERE (device_id != "" AND device_id = ?) OR ip = ?').bind(dev, ip).all();
+        likedIds = (lk.results || []).map(x => x.post_id);
+      }
+      list = list.map(p => Object.assign(p, { liked: likedIds.indexOf(p.id) >= 0 }));
+      return json({ posts: list });
+    }
+
+    // 帖子评论列表
+    if (path === '/api/posts/comments' && request.method === 'GET') {
+      await ensurePostsTables(env);
+      const pid = Number(url.searchParams.get('post_id') || 0) || 0;
+      const rows = await env.DB.prepare('SELECT id, name, content, created_at FROM post_comments WHERE post_id = ? ORDER BY id ASC LIMIT 100').bind(pid).all();
+      return json({ comments: (rows.results || []) });
+    }
+
+    // 发帖（需有效卡密，卡密核销一次性使用）
+    if (path === '/api/posts/create' && request.method === 'POST') {
+      await ensurePostsTables(env);
+      const b = await request.json();
+      const name = String((b && b.name) || '').trim().slice(0, 24);
+      const content = String((b && b.content) || '').trim().slice(0, 500);
+      const tags = String((b && b.tags) || '').trim().slice(0, 60);
+      const card = String((b && b.card) || '').trim().toUpperCase();
+      if (!name || !content) return json({ error: 'need_fields' }, 400);
+      if (!POST_CARD_RE.test(card)) return json({ error: 'card_invalid', msg: '卡密格式不正确' });
+      const cr = await env.DB.prepare('SELECT * FROM post_cards WHERE card = ?').bind(card).first();
+      if (!cr) return json({ error: 'card_invalid', msg: '卡密不存在或已失效' });
+      if (cr.used) return json({ error: 'card_used', msg: '该卡密已被使用' });
+      const dev = deviceId(request, url) || String((b && b.dev) || '').trim().slice(0, 80);
+      const ip = clientIp(request);
+      const ins = await env.DB.prepare("INSERT INTO posts (name,content,tags,card,device_id,ip) VALUES (?,?,?,?,?,?)").bind(name, content, tags, card, dev, ip).run();
+      const pid = ins.meta.last_rowid;
+      await env.DB.prepare("UPDATE post_cards SET used=1, post_id=?, used_at=datetime('now') WHERE card=?").bind(pid, card).run();
+      return json({ ok: true, id: pid, name: name });
+    }
+
+    // 点赞（设备+IP 防重复）
+    if (path === '/api/posts/like' && request.method === 'POST') {
+      await ensurePostsTables(env);
+      const b = await request.json();
+      const pid = Number((b && b.post_id) || 0) || 0;
+      const dev = deviceId(request, url) || String((b && b.dev) || '').trim().slice(0, 80);
+      const ip = clientIp(request);
+      if (!pid) return json({ error: 'bad_post' }, 400);
+      const post = await env.DB.prepare('SELECT id FROM posts WHERE id = ?').bind(pid).first();
+      if (!post) return json({ error: 'not_found' }, 404);
+      const dup = await env.DB.prepare('SELECT id FROM post_likes WHERE post_id = ? AND ((device_id != "" AND device_id = ?) OR ip = ?) LIMIT 1').bind(pid, dev, ip).first();
+      if (dup) return json({ error: 'already_liked' });
+      await env.DB.prepare('INSERT INTO post_likes (post_id,device_id,ip) VALUES (?,?,?)').bind(pid, dev, ip).run();
+      const cnt = await env.DB.prepare('SELECT COUNT(*) n FROM post_likes WHERE post_id = ?').bind(pid).first();
+      return json({ ok: true, likes: cnt.n });
+    }
+
+    // 评论（10 秒/IP 限频）
+    if (path === '/api/posts/comment' && request.method === 'POST') {
+      await ensurePostsTables(env);
+      const b = await request.json();
+      const pid = Number((b && b.post_id) || 0) || 0;
+      const name = String((b && b.name) || '').trim().slice(0, 24) || '匿名玩家';
+      const content = String((b && b.content) || '').trim().slice(0, 200);
+      if (!pid || !content) return json({ error: 'need_fields' }, 400);
+      const post = await env.DB.prepare('SELECT id FROM posts WHERE id = ?').bind(pid).first();
+      if (!post) return json({ error: 'not_found' }, 404);
+      const ip = clientIp(request);
+      const nowSec = Math.floor(Date.now() / 1000);
+      const lastC = COMMENT_IP_MAP.get(ip) || 0;
+      if (nowSec - lastC < 10) return json({ error: 'rate', msg: '操作太快，请稍后再试' });
+      COMMENT_IP_MAP.set(ip, nowSec);
+      await env.DB.prepare('INSERT INTO post_comments (post_id,name,content) VALUES (?,?,?)').bind(pid, name, content).run();
+      const cnt = await env.DB.prepare('SELECT COUNT(*) n FROM post_comments WHERE post_id = ?').bind(pid).first();
+      return json({ ok: true, comments: cnt.n });
+    }
+
+    // 卡密管理（管理员：生成/列表/删除/重置）
+    if (path === '/api/posts/cards_admin' && request.method === 'POST') {
+      const b = await request.json();
+      if (!b || b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await ensurePostsTables(env);
+      const act = String(b.action || '');
+      if (act === 'gen') {
+        const count = Math.min(50, Math.max(1, Number(b.count) || 1));
+        const made = [];
+        for (let i = 0; i < count; i++) {
+          let card = genPostCard();
+          let tries = 0;
+          while (tries < 8) {
+            const ex = await env.DB.prepare('SELECT id FROM post_cards WHERE card = ?').bind(card).first();
+            if (!ex) break;
+            card = genPostCard(); tries++;
+          }
+          if (tries >= 8) continue;
+          await env.DB.prepare('INSERT INTO post_cards (card) VALUES (?)').bind(card).run();
+          made.push(card);
+        }
+        return json({ ok: true, cards: made });
+      }
+      if (act === 'list') {
+        const rows = await env.DB.prepare('SELECT * FROM post_cards ORDER BY id DESC LIMIT 500').all();
+        return json({ ok: true, cards: (rows.results || []).map(r => ({ id: r.id, card: r.card, used: !!r.used, post_id: r.post_id || null, created_at: r.created_at, used_at: r.used_at || null })) });
+      }
+      if (act === 'del') {
+        await env.DB.prepare('DELETE FROM post_cards WHERE id = ?').bind(Number(b.id) || 0).run();
+        return json({ ok: true });
+      }
+      if (act === 'reset') {
+        await env.DB.prepare("UPDATE post_cards SET used=0, post_id=NULL, used_at=NULL WHERE id=?").bind(Number(b.id) || 0).run();
+        return json({ ok: true });
+      }
+      return json('unknown_action');
+    }
+
+    // 帖子管理（管理员：删帖/置顶/删评论）
+    if (path === '/api/posts/admin' && request.method === 'POST') {
+      const b = await request.json();
+      if (!b || b.pw !== ADMIN_PASSWORD) return json({ error: 'wrong_password' }, 401);
+      await ensurePostsTables(env);
+      const act = String(b.action || '');
+      const id = Number(b.id) || 0;
+      if (act === 'del_post') {
+        await env.DB.prepare('DELETE FROM post_comments WHERE post_id = ?').bind(id).run();
+        await env.DB.prepare('DELETE FROM post_likes WHERE post_id = ?').bind(id).run();
+        await env.DB.prepare("UPDATE post_cards SET used=0, post_id=NULL, used_at=NULL WHERE post_id=?").bind(id).run();
+        await env.DB.prepare('DELETE FROM posts WHERE id = ?').bind(id).run();
+        return json({ ok: true });
+      }
+      if (act === 'pin') {
+        await env.DB.prepare('UPDATE posts SET pinned = CASE pinned WHEN 1 THEN 0 ELSE 1 END WHERE id = ?').bind(id).run();
+        return json({ ok: true });
+      }
+      if (act === 'del_comment') {
+        await env.DB.prepare('DELETE FROM post_comments WHERE id = ?').bind(id).run();
+        return json({ ok: true });
+      }
+      return json('unknown_action');
+    }
+
     // 查询禁用物品
     if (path === '/api/tools/items' && request.method === 'GET') {
       await ensureToolsTables(env);
@@ -523,7 +734,67 @@ export async function onRequest(context) {
       return json({ ok: true });
     }
 
-    return new Response('Not found', { status: 404 });
+    // ===== 访问量统计：上报（公开，5 秒/IP 限频）=====
+  if (path === '/api/visit' && request.method === 'POST') {
+    await ensureVisitTable(env);
+    const ip = clientIp(request);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const last = VISIT_IP_MAP.get(ip) || 0;
+    if (nowSec - last < 5) return json({ ok: false, error: 'rate' }, 200, request);
+    VISIT_IP_MAP.set(ip, nowSec);
+    let b = {};
+    try { b = await request.json(); } catch (e) {}
+    const vdate = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    try {
+      await env.DB.prepare(
+        'INSERT INTO site_visits (vdate, path, ref, ua, ip, device_id) VALUES (?,?,?,?,?,?)'
+      ).bind(
+        vdate,
+        String(b.path || '/').slice(0, 200),
+        String(b.ref || '').slice(0, 300),
+        String(b.ua || '').slice(0, 300),
+        String(ip || '').slice(0, 60),
+        String(b.device_id || '').slice(0, 80)
+      ).run();
+    } catch (e) {
+      return json({ ok: false, error: 'db' }, 200, request);
+    }
+    return json({ ok: true }, 200, request);
+  }
+
+  // ===== 访问量统计：查询（管理员，x-admin-pw）=====
+  if (path === '/api/stats' && request.method === 'GET') {
+    const pw = request.headers.get('x-admin-pw') || '';
+    if (pw !== ADMIN_PASSWORD) return json({ ok: false, error: 'unauthorized' }, 401, request);
+    await ensureVisitTable(env);
+    const now8 = Date.now() + 8 * 3600 * 1000;
+    const today = new Date(now8).toISOString().slice(0, 10);
+    const weekAgo = new Date(now8 - 13 * 86400000).toISOString().slice(0, 10);
+    let t1 = null, t2 = null, t3 = null, t4 = null, t5 = null, t6 = null, t7 = null;
+    try {
+      t1 = await env.DB.prepare('SELECT COUNT(*) n FROM site_visits').first();
+      t2 = await env.DB.prepare('SELECT COUNT(*) n FROM site_visits WHERE vdate=?').bind(today).first();
+      t3 = await env.DB.prepare("SELECT COUNT(DISTINCT device_id) n FROM site_visits WHERE device_id<>''").first();
+      t4 = await env.DB.prepare("SELECT COUNT(DISTINCT device_id) n FROM site_visits WHERE vdate=? AND device_id<>''").bind(today).first();
+      t5 = await env.DB.prepare('SELECT vdate, COUNT(*) pv, COUNT(DISTINCT device_id) uv FROM site_visits WHERE vdate>=? GROUP BY vdate ORDER BY vdate').bind(weekAgo).all();
+      t6 = await env.DB.prepare("SELECT path, COUNT(*) n FROM site_visits WHERE path<>'' GROUP BY path ORDER BY n DESC LIMIT 10").all();
+      t7 = await env.DB.prepare("SELECT CASE WHEN ua LIKE '%Mobile%' OR ua LIKE '%Android%' OR ua LIKE '%iPhone%' OR ua LIKE '%iPad%' THEN 'mobile' ELSE 'desktop' END t, COUNT(*) n FROM site_visits GROUP BY t").all();
+    } catch (e) {
+      return json({ ok: false, error: 'db' }, 200, request);
+    }
+    return json({
+      ok: true,
+      total_pv: (t1 && t1.n) || 0,
+      today_pv: (t2 && t2.n) || 0,
+      total_uv: (t3 && t3.n) || 0,
+      today_uv: (t4 && t4.n) || 0,
+      trend: (t5 && t5.results) || [],
+      pages: (t6 && t6.results) || [],
+      devices: (t7 && t7.results) || []
+    }, 200, request);
+  }
+
+  return new Response('Not found', { status: 404 });
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), {
       status: 500,
